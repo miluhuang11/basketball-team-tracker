@@ -598,6 +598,18 @@
                 </button>
               </form>
 
+              <!-- 還原預設名單按鈕 -->
+              <div class="flex justify-between items-center px-1">
+                <span class="text-[10px] text-slate-400 font-bold">🏃‍♀️ 球員列表</span>
+                <button 
+                  type="button"
+                  @click="confirmRestoreDefaultRoster" 
+                  class="bg-slate-850 hover:bg-rose-950/40 border border-slate-800 hover:border-rose-900/50 text-slate-300 hover:text-rose-300 text-[9px] font-bold px-2 py-1 rounded transition flex items-center gap-1"
+                >
+                  <i class="fa-solid fa-rotate-left text-[8px]"></i> 還原東吳預設名單
+                </button>
+              </div>
+
               <!-- 球員列表與狀態控制 -->
               <div class="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
                 <div 
@@ -1781,6 +1793,17 @@
           }
         }
 
+        function confirmRestoreDefaultRoster() {
+          if (confirm("是否確定清除目前名單，並還原為東吳女籃的預設名單？")) {
+            pushHistoryState();
+            players.value = JSON.parse(JSON.stringify(defaultPlayers));
+            sortPlayers();
+            selectedCourtPlayer.value = null;
+            saveState();
+            showToast("已成功載入東吳女籃預設名單！");
+          }
+        }
+
         // 觸發重設對話框
         function confirmResetGame() {
           playClickSound(220, 0.1);
@@ -1980,7 +2003,7 @@
           confirmResetGame, resetGame, formatMinutes, toggleSound, copyTextReport, exportCSV, saveState,
           toggleTimer, adjustTime, teamTimeouts, recordTimeout, maxTimeouts,
           supabaseUrl, supabaseKey, isSupabaseConnected, isSupabaseSyncing, supabaseGamesList, isAutoSyncEnabled, currentGameCloudId,
-          testSupabaseConnection, disconnectSupabase, saveToSupabase, fetchCloudGames, loadGameFromCloud, deleteGameFromCloud, toggleAutoSync, onPlayerNumberChange
+          testSupabaseConnection, disconnectSupabase, saveToSupabase, fetchCloudGames, loadGameFromCloud, deleteGameFromCloud, toggleAutoSync, onPlayerNumberChange, confirmRestoreDefaultRoster
         };
       }
     }).mount('#app');
