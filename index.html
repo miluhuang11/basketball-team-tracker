@@ -209,7 +209,7 @@
     <main class="flex-1 p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden">
       
       <!-- 左半側 (7 欄)：場上球員 & 數據按鍵 (在大螢幕排列在右側) -->
-      <section class="lg:col-span-7 lg:order-last flex flex-col gap-4 overflow-y-auto lg:overflow-visible">
+      <section :class="isBoxscoreMaximized ? 'hidden lg:hidden' : 'lg:col-span-7 lg:order-last'" class="flex flex-col gap-4 overflow-y-auto lg:overflow-visible">
         
         <!-- 場上 5 人 (動態鎖定卡片) -->
         <div class="bg-slate-900/60 backdrop-blur-md rounded-2xl p-4 border border-slate-800/80 shadow-md">
@@ -426,7 +426,7 @@
 
       <!-- 右半側 (5 欄)：球隊得分、板凳/名單/數據大表 分頁、即時事件 Log (在大螢幕排列在左側) -->
       <!-- 使用 lg:order-first 使其在排版上顯示於左邊，並將寬度調為 5 欄以給予數據大表更多橫向空間 -->
-      <section class="lg:col-span-5 lg:order-first flex flex-col gap-4 overflow-hidden">
+      <section :class="isBoxscoreMaximized ? 'lg:col-span-12' : 'lg:col-span-5 lg:order-first'" class="flex flex-col gap-4 overflow-hidden">
         
         <!-- 比分看板 -->
         <div class="bg-slate-900/60 backdrop-blur-md rounded-2xl p-4 border border-slate-800/80 shadow-md flex items-center justify-between shrink-0">
@@ -543,19 +543,29 @@
             <div v-show="activeTab === 'boxscore'" class="space-y-3 h-full flex flex-col justify-between">
               
               <!-- 節數與總表子選單切換 -->
-              <div class="flex items-center bg-slate-950/85 p-1 rounded-xl border border-slate-850 shrink-0 select-none">
+              <div class="flex items-center bg-slate-950/85 p-1 rounded-xl border border-slate-850 shrink-0 select-none gap-2">
+                <div class="flex flex-1 items-center bg-slate-900 p-0.5 rounded-lg border border-slate-800">
+                  <button 
+                    v-for="tab in boxscoreTabs" 
+                    :key="tab.value"
+                    @click="boxscoreQuarterTab = tab.value"
+                    :class="[
+                      boxscoreQuarterTab === tab.value 
+                        ? tab.activeClass 
+                        : 'text-slate-400 border-transparent hover:text-white'
+                    ]"
+                    class="flex-1 py-1 rounded-lg text-[10px] transition text-center border font-semibold"
+                  >
+                    {{ tab.label }}
+                  </button>
+                </div>
+                <!-- 放大/縮小按鈕 (桌機版專用，可展開寬度) -->
                 <button 
-                  v-for="tab in boxscoreTabs" 
-                  :key="tab.value"
-                  @click="boxscoreQuarterTab = tab.value"
-                  :class="[
-                    boxscoreQuarterTab === tab.value 
-                      ? tab.activeClass 
-                      : 'text-slate-400 border-transparent hover:text-white'
-                  ]"
-                  class="flex-1 py-1 rounded-lg text-[10px] transition text-center border font-semibold"
+                  @click="isBoxscoreMaximized = !isBoxscoreMaximized"
+                  class="hidden lg:flex bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white w-8 h-8 rounded-lg items-center justify-center transition shrink-0"
+                  :title="isBoxscoreMaximized ? '還原視窗' : '放大表格'"
                 >
-                  {{ tab.label }}
+                  <i :class="isBoxscoreMaximized ? 'fa-solid fa-compress' : 'fa-solid fa-expand'"></i>
                 </button>
               </div>
 
@@ -989,6 +999,7 @@
         // 頁面選單控制
         const activeTab = ref("bench"); // 'bench', 'boxscore', 'roster'
         const showFoulSelector = ref(false);
+        const isBoxscoreMaximized = ref(false);
         
         // 計時器相關
         const remainingSeconds = ref(600); // 預設 10 分鐘 (600秒)
@@ -2403,7 +2414,8 @@
           supabaseUrl, supabaseKey, isSupabaseConnected, isSupabaseSyncing, supabaseGamesList, isAutoSyncEnabled, currentGameCloudId,
           testSupabaseConnection, disconnectSupabase, saveToSupabase, fetchCloudGames, loadGameFromCloud, deleteGameFromCloud, toggleAutoSync, onPlayerNumberChange, confirmRestoreDefaultRoster,
           boxscoreQuarterTab, boxscoreTabs, getDisplaySeconds, getDisplayStats,
-          showFoulSelector, recordFoul, displayQuarterFouls, formatQuarterFouls, qFoulsString
+          showFoulSelector, recordFoul, displayQuarterFouls, formatQuarterFouls, qFoulsString,
+          isBoxscoreMaximized
         };
       }
     }).mount('#app');
