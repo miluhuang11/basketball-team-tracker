@@ -920,9 +920,40 @@
             
           </div>
         </div>
-
-
-
+        <!-- 即時事件 Log (當打開數據大表時隱藏，讓大表擁有最大高度) -->
+        <div v-if="activeTab !== 'boxscore'" class="bg-slate-900/60 backdrop-blur-md rounded-2xl p-4 border border-slate-800/80 shadow-md h-[180px] shrink-0 flex flex-col overflow-hidden">
+          <h2 class="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider flex items-center justify-between">
+            <span>📋 即時事件 Log</span>
+            <span class="text-[9px] text-slate-500 font-mono">最新在最上</span>
+          </h2>
+          
+          <div class="space-y-1.5 overflow-y-auto flex-1 text-[11px] pr-1">
+            <div v-if="logs.length === 0" class="text-center py-8 text-xs text-slate-600">
+              尚無任何攻守紀錄事件。
+            </div>
+            <div 
+              v-for="log in logs" 
+              :key="log.id" 
+              class="bg-slate-800/40 p-2 rounded-lg flex justify-between items-center border-l-2"
+              :style="{ borderLeftColor: log.color || '#6366f1' }"
+            >
+              <div>
+                <span class="text-slate-500 font-mono mr-1">[{{ log.quarter }}節 {{ log.timeStr }}]</span>
+                <span v-if="log.playerNumber" class="font-bold text-slate-200">#{{ log.playerNumber }} {{ log.playerName }}</span>
+                <span class="ml-1.5 font-medium" :style="{ color: log.color || '#a5b4fc' }">{{ log.actionText }}</span>
+              </div>
+              
+              <!-- 快速撤銷單筆 Log -->
+              <button 
+                @click="deleteSpecificLog(log)" 
+                class="text-slate-500 hover:text-rose-400 hover:bg-slate-800 p-0.5 rounded transition"
+                title="撤銷此動作"
+              >
+                <i class="fa-solid fa-xmark text-[10px]"></i>
+              </button>
+            </div>
+          </div>
+        </div>
       </section>
     </main>
 
