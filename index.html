@@ -957,17 +957,17 @@
       </section>
     </main>
 
-    <!-- 重設確認 Modal -->
+    <!-- 開啟新比賽確認 Modal -->
     <div v-if="showResetModal" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
       <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
         <div class="flex items-center space-x-3 text-rose-500 mb-4">
           <i class="fa-solid fa-circle-exclamation text-2xl animate-bounce"></i>
-          <h3 class="text-lg font-black">重設確認</h3>
+          <h3 class="text-lg font-black">開啟新比賽</h3>
         </div>
         
         <p class="text-sm text-slate-300 mb-6 leading-relaxed">
-          您即將重設本場比賽的所有數據（包括得分、犯規、事件 Log 與球員上場時間）。<br>
-          <strong class="text-white">注意：現有球員名單將會保留。</strong>此操作無法復原，是否確定？
+          您即將清空本場所有的得分、犯規、事件 Log 與上場時間，並將時間歸時為 <strong class="text-white">10:00</strong>。<br>
+          <strong class="text-indigo-400">注意：現有球員背號與名單將會完全保留</strong>，讓您免去重新輸入的繁瑣！此操作無法復原，是否確定？
         </p>
 
         <div class="flex gap-3">
@@ -975,7 +975,7 @@
             取消
           </button>
           <button @click="resetGame" class="flex-1 bg-rose-700 hover:bg-rose-600 text-white py-2.5 rounded-xl font-bold transition text-sm">
-            確定重設
+            確定開啟新比賽
           </button>
         </div>
       </div>
@@ -1352,6 +1352,21 @@
 
           const prevQ = currentQuarter.value;
           currentQuarter.value = q;
+          
+          // 換節自動重設單節剩餘時間 (10:00，延長賽為 5:00)
+          if (q === 'OT') {
+            remainingSeconds.value = 300; // 延長賽 5 分鐘
+          } else {
+            remainingSeconds.value = 600; // 常規節 10 分鐘
+          }
+
+          // 暫停計時器跑動 (避免切換後計時器在無人看管下直接繼續倒數)
+          if (isTimerRunning.value) {
+            isTimerRunning.value = false;
+            if (gameTimerInterval) {
+              clearInterval(gameTimerInterval);
+            }
+          }
           
           // 如果是小節切換，通常國際賽會歸零單節隊犯，此處詢問或提示？
           // 為求單隊極速操作，小節切換時自動記錄日誌，並可選是否重設團犯 (一般單節歸零)
