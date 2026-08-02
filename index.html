@@ -570,48 +570,50 @@
               </div>
 
               <!-- 數據表格 -->
-              <div class="overflow-x-auto border border-slate-800 rounded-xl flex-1">
+              <div class="overflow-x-auto border border-slate-800 rounded-2xl flex-1 bg-slate-900/25">
                 <table class="w-full text-[10px] text-left border-collapse font-mono">
                   <thead>
-                    <tr class="bg-slate-900 text-slate-400 border-b border-slate-800">
-                      <th class="p-2 font-sans font-bold">背號/姓名</th>
-                      <th class="p-2 text-center">時間</th>
-                      <th class="p-2 text-center font-sans font-bold">得分</th>
-                      <th class="p-2 text-center">2分</th>
-                      <th class="p-2 text-center">3分</th>
-                      <th class="p-2 text-center">罰球</th>
-                      <th class="p-2 text-center">助攻</th>
-                      <th class="p-2 text-center">籃板</th>
-                      <th class="p-2 text-center">其他</th>
+                    <tr class="bg-slate-900/80 text-slate-400 border-b border-slate-800 font-sans">
+                      <th class="p-3 font-sans font-bold tracking-wider uppercase border-r border-slate-800/40">背號/姓名</th>
+                      <th class="p-3 text-center font-bold tracking-wider uppercase border-r border-slate-800/40">時間</th>
+                      <th class="p-3 text-center font-bold tracking-wider uppercase border-r border-slate-800/40">得分</th>
+                      <th class="p-3 text-center font-bold tracking-wider uppercase">2分</th>
+                      <th class="p-3 text-center font-bold tracking-wider uppercase">3分</th>
+                      <th class="p-3 text-center font-bold tracking-wider uppercase border-r border-slate-800/40">罰球</th>
+                      <th class="p-3 text-center font-bold tracking-wider uppercase border-r border-slate-800/40">助攻</th>
+                      <th class="p-3 text-center font-bold tracking-wider uppercase border-r border-slate-800/40">籃板</th>
+                      <th class="p-3 text-center font-bold tracking-wider uppercase">其他</th>
                     </tr>
                   </thead>
-                  <tbody class="divide-y divide-slate-800/60">
+                  <tbody class="divide-y divide-slate-800/50">
                     <tr 
                       v-for="p in players" 
                       :key="p.id" 
-                      class="hover:bg-slate-800/20"
-                      :class="p.isOnCourt ? 'bg-indigo-950/10' : ''"
+                      class="hover:bg-slate-800/30 transition-colors duration-150"
+                      :class="p.isOnCourt ? 'bg-indigo-950/15 border-l-2 border-indigo-500' : ''"
                     >
                       <!-- 背號姓名 -->
-                      <td class="p-2 font-sans">
-                        <span class="font-bold font-mono text-indigo-400">#{{ p.number }}</span>
-                        <span class="ml-1 text-slate-300 truncate max-w-[60px] inline-block align-bottom">{{ p.name }}</span>
-                        <span v-if="p.isOnCourt" class="text-[8px] bg-indigo-500/20 text-indigo-300 px-1 rounded ml-0.5">場上</span>
+                      <td class="p-3 font-sans border-r border-slate-800/40">
+                        <div class="flex items-center space-x-2">
+                          <span class="bg-slate-950 px-1.5 py-0.5 rounded text-[10px] font-bold font-mono border border-slate-850 text-indigo-400">#{{ p.number }}</span>
+                          <span class="text-slate-200 font-bold truncate max-w-[65px]" :class="p.isOnCourt ? 'text-indigo-300' : ''">{{ p.name }}</span>
+                          <span v-if="p.isOnCourt" class="text-[8px] bg-indigo-500/20 text-indigo-300 px-1 rounded font-bold scale-90">場上</span>
+                        </div>
                       </td>
                       
                       <!-- 時間 -->
-                      <td class="p-2 text-center text-slate-400">
+                      <td class="p-3 text-center font-mono border-r border-slate-800/40" :class="getDisplaySeconds(p) === 0 ? 'text-slate-600' : 'text-slate-350'">
                         {{ formatMinutes(getDisplaySeconds(p)) }}
                       </td>
                       
                       <!-- 得分 (若在總表，則顯示彩色分節 breakdown) -->
-                      <td class="p-2 text-center font-bold text-xs">
+                      <td class="p-3 text-center font-mono border-r border-slate-800/40">
                         <div class="flex flex-col items-center">
-                          <span :class="boxscoreQuarterTab === 'total' ? 'text-amber-400 text-xs' : 'text-slate-100'">
+                          <span :class="getDisplayStats(p).pts === 0 ? 'text-slate-600 font-normal' : (boxscoreQuarterTab === 'total' ? 'text-amber-400 font-black text-xs' : 'text-slate-100 font-bold')">
                             {{ getDisplayStats(p).pts }}
                           </span>
                           <!-- 得分 breakdown -->
-                          <span v-if="boxscoreQuarterTab === 'total'" class="text-[8px] scale-90 text-slate-500 font-semibold mt-0.5 flex items-center gap-0.5">
+                          <span v-if="boxscoreQuarterTab === 'total' && getDisplayStats(p).pts > 0" class="text-[8px] scale-90 text-slate-500 font-semibold mt-0.5 flex items-center gap-0.5 select-none">
                             <span class="text-sky-400">{{ p.statsByQuarter?.[1]?.pts ?? 0 }}</span>·<span class="text-rose-500">{{ p.statsByQuarter?.[2]?.pts ?? 0 }}</span>·<span class="text-emerald-400">{{ p.statsByQuarter?.[3]?.pts ?? 0 }}</span>·<span class="text-slate-350">{{ p.statsByQuarter?.[4]?.pts ?? 0 }}</span>
                             <span v-if="p.statsByQuarter?.['OT']?.pts > 0" class="text-amber-500">·{{ p.statsByQuarter?.['OT']?.pts }}</span>
                           </span>
@@ -619,41 +621,50 @@
                       </td>
                       
                       <!-- 2分 -->
-                      <td class="p-2 text-center text-slate-300">
+                      <td class="p-3 text-center font-mono" :class="getDisplayStats(p).fg2a === 0 ? 'text-slate-600' : 'text-slate-200 font-bold'">
                         {{ getDisplayStats(p).fg2m }}-{{ getDisplayStats(p).fg2a }}
                       </td>
                       
                       <!-- 3分 -->
-                      <td class="p-2 text-center text-slate-300">
+                      <td class="p-3 text-center font-mono" :class="getDisplayStats(p).fg3a === 0 ? 'text-slate-600' : 'text-slate-200 font-bold'">
                         {{ getDisplayStats(p).fg3m }}-{{ getDisplayStats(p).fg3a }}
                       </td>
                       
                       <!-- 罰球 -->
-                      <td class="p-2 text-center text-slate-300">
+                      <td class="p-3 text-center font-mono border-r border-slate-800/40" :class="getDisplayStats(p).fta === 0 ? 'text-slate-600' : 'text-slate-200 font-bold'">
                         {{ getDisplayStats(p).ftm }}-{{ getDisplayStats(p).fta }}
                       </td>
                       
                       <!-- 助攻 -->
-                      <td class="p-2 text-center text-indigo-300 font-bold">
+                      <td class="p-3 text-center font-mono border-r border-slate-800/40" :class="getDisplayStats(p).ast === 0 ? 'text-slate-600' : 'text-indigo-400 font-black'">
                         {{ getDisplayStats(p).ast }}
                       </td>
                       
                       <!-- 籃板 -->
-                      <td class="p-2 text-center text-sky-300">
-                        {{ getDisplayStats(p).oreb + getDisplayStats(p).dreb }}
-                        <span class="text-[8px] text-slate-500">({{ getDisplayStats(p).oreb }}/{{ getDisplayStats(p).dreb }})</span>
+                      <td class="p-3 text-center font-mono border-r border-slate-800/40" :class="(getDisplayStats(p).oreb + getDisplayStats(p).dreb) === 0 ? 'text-slate-600' : 'text-sky-400 font-black'">
+                        <div>
+                          <span>{{ getDisplayStats(p).oreb + getDisplayStats(p).dreb }}</span>
+                          <span class="text-[8px] text-slate-500 block scale-90 select-none" v-if="(getDisplayStats(p).oreb + getDisplayStats(p).dreb) > 0">
+                            ({{ getDisplayStats(p).oreb }}/{{ getDisplayStats(p).dreb }})
+                          </span>
+                        </div>
                       </td>
                       
                       <!-- 其他 / 犯規 (顯示具體犯規代號，並在總表顯示彩色分節犯規記號) -->
-                      <td class="p-2 text-center text-slate-400 leading-tight">
-                        <div>
-                          <span>S:{{ getDisplayStats(p).stl }}|B:{{ getDisplayStats(p).blk }}|T:{{ getDisplayStats(p).to }}</span>
-                          <div class="mt-0.5">
-                            <!-- 顯示犯規：分節表直接顯示例如 P, P2，總表顯示總次數與分節犯規詳細分布 -->
-                            <span class="font-bold" :class="getDisplayStats(p).pf >= 4 ? 'text-rose-500 font-black' : 'text-slate-300'">
+                      <td class="p-3 text-center text-slate-400 leading-normal font-sans">
+                        <div class="flex flex-col items-center">
+                          <div class="flex items-center space-x-1.5 text-[9px] font-mono">
+                            <span :class="getDisplayStats(p).stl === 0 ? 'text-slate-600' : 'text-amber-400 font-bold'">S:{{ getDisplayStats(p).stl }}</span>
+                            <span class="text-slate-800">|</span>
+                            <span :class="getDisplayStats(p).blk === 0 ? 'text-slate-600' : 'text-violet-400 font-bold'">B:{{ getDisplayStats(p).blk }}</span>
+                            <span class="text-slate-800">|</span>
+                            <span :class="getDisplayStats(p).to === 0 ? 'text-slate-600' : 'text-rose-450 font-bold'">T:{{ getDisplayStats(p).to }}</span>
+                          </div>
+                          <div class="mt-1 font-mono">
+                            <span class="font-bold" :class="getDisplayStats(p).pf >= 4 ? 'text-rose-500 font-black animate-pulse text-xs' : (getDisplayStats(p).pf === 0 && boxscoreQuarterTab === 'total' ? 'text-slate-600 font-normal' : 'text-slate-350')">
                               F:{{ boxscoreQuarterTab === 'total' ? getDisplayStats(p).pf : displayQuarterFouls(p, boxscoreQuarterTab) }}
                             </span>
-                            <span v-if="boxscoreQuarterTab === 'total' && getDisplayStats(p).pf > 0" class="text-[8px] scale-90 text-slate-500 ml-1 font-semibold block mt-0.5">
+                            <span v-if="boxscoreQuarterTab === 'total' && getDisplayStats(p).pf > 0" class="text-[8px] scale-90 text-slate-500 ml-1 font-semibold block mt-0.5 select-none">
                               (<span class="text-sky-400">{{ formatQuarterFouls(p, 1) }}</span>·<span class="text-rose-500">{{ formatQuarterFouls(p, 2) }}</span>·<span class="text-emerald-400">{{ formatQuarterFouls(p, 3) }}</span>·<span class="text-slate-355">{{ formatQuarterFouls(p, 4) }}</span><span v-if="formatQuarterFouls(p, 'OT') !== '-'" class="text-amber-500">·{{ formatQuarterFouls(p, 'OT') }}</span>)
                             </span>
                           </div>
