@@ -182,8 +182,8 @@
     <!-- 主區區網格 (Main Layout Grid) -->
     <main class="flex-1 p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden">
       
-      <!-- 左半側 (8 欄)：場上球員 & 數據按鍵 -->
-      <section class="lg:col-span-8 flex flex-col gap-4 overflow-y-auto lg:overflow-visible">
+      <!-- 左半側 (8 欄)：場上球員 & 數據按鍵 (在大螢幕排列在右側) -->
+      <section class="lg:col-span-8 lg:order-last flex flex-col gap-4 overflow-y-auto lg:overflow-visible">
         
         <!-- 場上 5 人 (動態鎖定卡片) -->
         <div class="bg-slate-900/60 backdrop-blur-md rounded-2xl p-4 border border-slate-800/80 shadow-md">
@@ -242,100 +242,100 @@
               <span v-if="!selectedCourtPlayer" class="text-xs text-rose-400/80 font-bold">⚠️ 請先選擇上方球員才能登錄</span>
             </div>
             
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               <!-- 得分與投籃 -->
               <button 
                 @click="recordAction('FG2_MADE')" 
                 :disabled="!selectedCourtPlayer"
-                class="bg-emerald-700/90 hover:bg-emerald-600 text-white font-bold p-3.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-emerald-700/90 shadow-sm"
+                class="bg-emerald-700/90 hover:bg-emerald-600 text-white font-bold p-2.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-emerald-700/90 shadow-sm"
               >
-                <span class="text-lg">2分進球</span>
-                <span class="text-[10px] font-medium opacity-85">得分 +2 | 2PM+1</span>
+                <span class="text-base">2分進球</span>
+                <span class="text-[9px] font-medium opacity-85">得分 +2 | 2PM+1</span>
               </button>
               <button 
                 @click="recordAction('FG2_MISS')" 
                 :disabled="!selectedCourtPlayer"
-                class="bg-slate-800/80 hover:bg-slate-700/80 text-rose-300 border border-rose-950/40 font-bold p-3.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-slate-800/80"
+                class="bg-slate-800/80 hover:bg-slate-700/80 text-rose-300 border border-rose-950/40 font-bold p-2.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-slate-800/80"
               >
-                <span class="text-lg">2分投失</span>
-                <span class="text-[10px] font-medium opacity-75">2PA+1</span>
+                <span class="text-base">2分投失</span>
+                <span class="text-[9px] font-medium opacity-75">2PA+1</span>
               </button>
               <button 
                 @click="recordAction('FG3_MADE')" 
                 :disabled="!selectedCourtPlayer"
-                class="bg-emerald-800/90 hover:bg-emerald-700 text-white font-bold p-3.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-emerald-800/90 shadow-sm"
+                class="bg-emerald-800/90 hover:bg-emerald-700 text-white font-bold p-2.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-emerald-800/90 shadow-sm"
               >
-                <span class="text-lg">3分進球</span>
-                <span class="text-[10px] font-medium opacity-85">得分 +3 | 3PM+1</span>
+                <span class="text-base">3分進球</span>
+                <span class="text-[9px] font-medium opacity-85">得分 +3 | 3PM+1</span>
               </button>
               <button 
                 @click="recordAction('FG3_MISS')" 
                 :disabled="!selectedCourtPlayer"
-                class="bg-slate-800/80 hover:bg-slate-700/80 text-rose-300 border border-rose-950/40 font-bold p-3.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-slate-800/80"
+                class="bg-slate-800/80 hover:bg-slate-700/80 text-rose-300 border border-rose-950/40 font-bold p-2.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-slate-800/80"
               >
-                <span class="text-lg">3分投失</span>
-                <span class="text-[10px] font-medium opacity-75">3PA+1</span>
+                <span class="text-base">3分投失</span>
+                <span class="text-[9px] font-medium opacity-75">3PA+1</span>
               </button>
 
               <button 
                 @click="recordAction('FT_MADE')" 
                 :disabled="!selectedCourtPlayer"
-                class="bg-teal-700/90 hover:bg-teal-600 text-white font-bold p-3.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-teal-700/90 shadow-sm"
+                class="bg-teal-700/90 hover:bg-teal-600 text-white font-bold p-2.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-teal-700/90 shadow-sm"
               >
-                <span class="text-lg">罰球命中</span>
-                <span class="text-[10px] font-medium opacity-85">得分 +1 | FTM+1</span>
+                <span class="text-base">罰球命中</span>
+                <span class="text-[9px] font-medium opacity-85">得分 +1 | FTM+1</span>
               </button>
               <button 
                 @click="recordAction('FT_MISS')" 
                 :disabled="!selectedCourtPlayer"
-                class="bg-slate-800/80 hover:bg-slate-700/80 text-rose-300 border border-rose-950/40 font-bold p-3.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-slate-800/80"
+                class="bg-slate-800/80 hover:bg-slate-700/80 text-rose-300 border border-rose-950/40 font-bold p-2.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-slate-800/80"
               >
-                <span class="text-lg">罰球不中</span>
-                <span class="text-[10px] font-medium opacity-75">FTA+1</span>
+                <span class="text-base">罰球不中</span>
+                <span class="text-[9px] font-medium opacity-75">FTA+1</span>
               </button>
               
               <!-- 籃板 -->
               <button 
                 @click="recordAction('OREB')" 
                 :disabled="!selectedCourtPlayer"
-                class="bg-sky-700/95 hover:bg-sky-600 text-white font-bold p-3.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-sky-700/95 shadow-sm"
+                class="bg-sky-700/95 hover:bg-sky-600 text-white font-bold p-2.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-sky-700/95 shadow-sm"
               >
-                <span class="text-lg">進攻籃板</span>
-                <span class="text-[10px] font-medium opacity-85">OREB +1</span>
+                <span class="text-base">進攻籃板</span>
+                <span class="text-[9px] font-medium opacity-85">OREB +1</span>
               </button>
               <button 
                 @click="recordAction('DREB')" 
                 :disabled="!selectedCourtPlayer"
-                class="bg-blue-700/95 hover:bg-blue-600 text-white font-bold p-3.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-blue-700/95 shadow-sm"
+                class="bg-blue-700/95 hover:bg-blue-600 text-white font-bold p-2.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-blue-700/95 shadow-sm"
               >
-                <span class="text-lg">防守籃板</span>
-                <span class="text-[10px] font-medium opacity-85">DREB +1</span>
+                <span class="text-base">防守籃板</span>
+                <span class="text-[9px] font-medium opacity-85">DREB +1</span>
               </button>
 
               <!-- 其他攻守數據 -->
               <button 
                 @click="recordAction('AST')" 
                 :disabled="!selectedCourtPlayer"
-                class="bg-indigo-700/90 hover:bg-indigo-650 text-white font-bold p-3.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-indigo-700/90 shadow-sm"
+                class="bg-indigo-700/90 hover:bg-indigo-650 text-white font-bold p-2.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-indigo-700/90 shadow-sm"
               >
-                <span class="text-lg">助攻 (AST)</span>
-                <span class="text-[10px] font-medium opacity-85">AST +1</span>
+                <span class="text-base">助攻 (AST)</span>
+                <span class="text-[9px] font-medium opacity-85">AST +1</span>
               </button>
               <button 
                 @click="recordAction('STL')" 
                 :disabled="!selectedCourtPlayer"
-                class="bg-amber-700/90 hover:bg-amber-600 text-white font-bold p-3.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-amber-700/90 shadow-sm"
+                class="bg-amber-700/90 hover:bg-amber-600 text-white font-bold p-2.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-amber-700/90 shadow-sm"
               >
-                <span class="text-lg">抄截 (STL)</span>
-                <span class="text-[10px] font-medium opacity-85">STL +1</span>
+                <span class="text-base">抄截 (STL)</span>
+                <span class="text-[9px] font-medium opacity-85">STL +1</span>
               </button>
               <button 
                 @click="recordAction('BLK')" 
                 :disabled="!selectedCourtPlayer"
-                class="bg-violet-700/90 hover:bg-violet-650 text-white font-bold p-3.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-violet-700/90 shadow-sm"
+                class="bg-violet-700/90 hover:bg-violet-650 text-white font-bold p-2.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-violet-700/90 shadow-sm"
               >
-                <span class="text-lg">阻攻 (BLK)</span>
-                <span class="text-[10px] font-medium opacity-85">BLK +1</span>
+                <span class="text-base">阻攻 (BLK)</span>
+                <span class="text-[9px] font-medium opacity-85">BLK +1</span>
               </button>
               
               <!-- 負面數據 -->
@@ -343,14 +343,14 @@
                 <button 
                   @click="recordAction('TO')" 
                   :disabled="!selectedCourtPlayer"
-                  class="bg-rose-900/80 hover:bg-rose-800 text-rose-100 border border-rose-900 font-bold rounded-xl transition flex flex-col items-center justify-center text-sm disabled:opacity-30"
+                  class="bg-rose-900/80 hover:bg-rose-800 text-rose-100 border border-rose-900 font-bold rounded-xl transition flex flex-col items-center justify-center text-sm disabled:opacity-30 py-2"
                 >
                   <span>失誤 (TO)</span>
                 </button>
                 <button 
                   @click="recordAction('PF')" 
                   :disabled="!selectedCourtPlayer"
-                  class="bg-orange-800/80 hover:bg-orange-700 text-orange-100 border border-orange-850 font-bold rounded-xl transition flex flex-col items-center justify-center text-sm disabled:opacity-30"
+                  class="bg-orange-800/80 hover:bg-orange-700 text-orange-100 border border-orange-850 font-bold rounded-xl transition flex flex-col items-center justify-center text-sm disabled:opacity-30 py-2"
                 >
                   <span>犯規 (PF)</span>
                 </button>
@@ -376,8 +376,9 @@
         </div>
       </section>
 
-      <!-- 右半側 (4 欄)：球隊得分、板凳/名單/數據大表 分頁、即時事件 Log -->
-      <section class="lg:col-span-4 flex flex-col gap-4 overflow-hidden">
+      <!-- 右半側 (4 欄)：球隊得分、板凳/名單/數據大表 分頁、即時事件 Log (在大螢幕排列在左側) -->
+      <!-- 使用 lg:order-first 使其在排版上顯示於左邊，攻守區在右邊，更符合使用習慣 -->
+      <section class="lg:col-span-4 lg:order-first flex flex-col gap-4 overflow-hidden">
         
         <!-- 比分看板 -->
         <div class="bg-slate-900/60 backdrop-blur-md rounded-2xl p-4 border border-slate-800/80 shadow-md flex items-center justify-between shrink-0">
