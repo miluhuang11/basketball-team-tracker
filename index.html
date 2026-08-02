@@ -68,13 +68,13 @@
       
       <!-- 隊名與節數 -->
       <div class="flex items-center space-x-3">
-        <div class="flex items-center space-x-2">
-          <i class="fa-solid fa-basketball text-amber-500 text-xl animate-pulse"></i>
+        <div class="flex items-center space-x-2 bg-indigo-950/20 px-2.5 py-1 rounded-xl border border-indigo-900/30">
+          <i class="fa-solid fa-shield-halved text-indigo-400 text-base animate-pulse"></i>
           <input 
             type="text" 
             v-model="teamName" 
             @change="saveState" 
-            class="bg-transparent border-b border-transparent hover:border-slate-700 focus:border-indigo-500 focus:outline-none font-black text-lg text-slate-100 w-36 transition"
+            class="bg-transparent border-b border-transparent hover:border-slate-700 focus:border-indigo-500 focus:outline-none font-black text-base text-slate-100 w-44 transition"
             title="點擊修改隊名"
           />
         </div>
@@ -437,17 +437,6 @@
               </button>
             </div>
           </div>
-
-          <div class="h-10 w-px bg-slate-800"></div>
-
-          <!-- 隊伍圖示 (替換球衣配色) -->
-          <div class="text-right flex flex-col items-end">
-            <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">隊伍標誌</div>
-            <div class="flex items-center space-x-2 bg-indigo-950/40 px-3 py-1.5 rounded-xl border border-indigo-900/40">
-              <i class="fa-solid fa-shield-halved text-indigo-400 text-lg animate-pulse"></i>
-              <span class="text-xs font-bold text-slate-200 font-sans tracking-wide">東吳女籃 SCU</span>
-            </div>
-          </div>
         </div>
 
         <!-- 分頁控制板 (Tab Panel) -->
@@ -727,7 +716,7 @@
     createApp({
       setup() {
         // 基本設定與球隊
-        const teamName = ref("東吳女籃");
+        const teamName = ref("東吳女籃 WSCU");
         const currentQuarter = ref(1);
         const quarters = [1, 2, 3, 4, "OT"];
         const possessionArrow = ref("W"); // W = 淺色, B = 深色
@@ -836,7 +825,7 @@
           if (saved) {
             try {
               const state = JSON.parse(saved);
-              teamName.value = state.teamName || "東吳女籃";
+              teamName.value = state.teamName || "東吳女籃 WSCU";
               currentQuarter.value = state.currentQuarter || 1;
               possessionArrow.value = state.possessionArrow || "W";
               teamJerseyColor.value = state.teamJerseyColor || "indigo";
@@ -856,7 +845,7 @@
         }
 
         function resetToDefault() {
-          teamName.value = "東吳女籃";
+          teamName.value = "東吳女籃 WSCU";
           currentQuarter.value = 1;
           possessionArrow.value = "W";
           teamJerseyColor.value = "indigo";
