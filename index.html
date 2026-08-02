@@ -182,8 +182,8 @@
     <!-- 主區區網格 (Main Layout Grid) -->
     <main class="flex-1 p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden">
       
-      <!-- 左半側 (8 欄)：場上球員 & 數據按鍵 (在大螢幕排列在右側) -->
-      <section class="lg:col-span-8 lg:order-last flex flex-col gap-4 overflow-y-auto lg:overflow-visible">
+      <!-- 左半側 (7 欄)：場上球員 & 數據按鍵 (在大螢幕排列在右側) -->
+      <section class="lg:col-span-7 lg:order-last flex flex-col gap-4 overflow-y-auto lg:overflow-visible">
         
         <!-- 場上 5 人 (動態鎖定卡片) -->
         <div class="bg-slate-900/60 backdrop-blur-md rounded-2xl p-4 border border-slate-800/80 shadow-md">
@@ -203,8 +203,8 @@
             </div>
           </div>
 
-          <!-- 5 人卡片 -->
-          <div class="grid grid-cols-5 gap-3">
+          <!-- 5 人卡片 (縮小版面以配合欄寬並提供大表空間) -->
+          <div class="grid grid-cols-5 gap-2.5">
             <button 
               v-for="player in onCourtPlayers" 
               :key="player.id"
@@ -215,18 +215,18 @@
                   : 'border border-slate-700/60 hover:bg-slate-800/40'
               ]"
               :style="{ borderColor: selectedCourtPlayer?.id === player.id ? getJerseyHex(teamJerseyColor) : '' }"
-              class="bg-slate-800/50 rounded-xl p-3 text-center flex flex-col items-center transition relative overflow-hidden group"
+              class="bg-slate-800/50 rounded-xl p-2 text-center flex flex-col items-center transition relative overflow-hidden group"
             >
               <!-- 球衣顏色背景裝飾 -->
               <div class="absolute -top-6 -right-6 w-12 h-12 rounded-full opacity-10 group-hover:opacity-20 transition" :style="{ backgroundColor: getJerseyHex(teamJerseyColor) }"></div>
               
-              <span class="text-2xl font-black font-mono tracking-tight" :style="{ color: selectedCourtPlayer?.id === player.id ? getJerseyHex(teamJerseyColor) : '#f1f5f9' }">
+              <span class="text-xl font-black font-mono tracking-tight" :style="{ color: selectedCourtPlayer?.id === player.id ? getJerseyHex(teamJerseyColor) : '#f1f5f9' }">
                 #{{ player.number }}
               </span>
-              <span class="text-xs font-bold text-slate-200 mt-1 truncate w-full">{{ player.name }}</span>
+              <span class="text-[11px] font-bold text-slate-200 mt-0.5 truncate w-full">{{ player.name }}</span>
               
-              <div class="w-full border-t border-slate-700/50 my-1.5"></div>
-              <div class="flex justify-between items-center w-full text-[10px] text-slate-400 font-semibold">
+              <div class="w-full border-t border-slate-700/50 my-1"></div>
+              <div class="flex justify-between items-center w-full text-[9px] text-slate-400 font-semibold">
                 <span>得分: <strong class="text-slate-200">{{ player.stats.pts }}</strong></span>
                 <span>犯規: <strong :class="player.stats.pf >= 4 ? 'text-rose-500' : 'text-slate-200'">{{ player.stats.pf }}</strong></span>
               </div>
@@ -376,9 +376,9 @@
         </div>
       </section>
 
-      <!-- 右半側 (4 欄)：球隊得分、板凳/名單/數據大表 分頁、即時事件 Log (在大螢幕排列在左側) -->
-      <!-- 使用 lg:order-first 使其在排版上顯示於左邊，攻守區在右邊，更符合使用習慣 -->
-      <section class="lg:col-span-4 lg:order-first flex flex-col gap-4 overflow-hidden">
+      <!-- 右半側 (5 欄)：球隊得分、板凳/名單/數據大表 分頁、即時事件 Log (在大螢幕排列在左側) -->
+      <!-- 使用 lg:order-first 使其在排版上顯示於左邊，並將寬度調為 5 欄以給予數據大表更多橫向空間 -->
+      <section class="lg:col-span-5 lg:order-first flex flex-col gap-4 overflow-hidden">
         
         <!-- 比分看板 -->
         <div class="bg-slate-900/60 backdrop-blur-md rounded-2xl p-4 border border-slate-800/80 shadow-md flex items-center justify-between shrink-0">
