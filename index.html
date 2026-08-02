@@ -606,12 +606,20 @@
                   class="bg-slate-800/30 border border-slate-800 rounded-xl p-2.5 flex items-center justify-between"
                 >
                   <div class="flex items-center space-x-2">
-                    <span class="font-mono font-bold text-slate-400">#{{ p.number }}</span>
+                    <span class="font-mono font-bold text-slate-500 text-xs">#</span>
+                    <input 
+                      type="text" 
+                      v-model="p.number" 
+                      @change="onPlayerNumberChange" 
+                      class="bg-transparent border-b border-transparent hover:border-slate-700 focus:border-indigo-500 focus:outline-none text-xs text-slate-200 font-bold font-mono w-8 text-center"
+                      title="點擊修改背號"
+                    />
                     <input 
                       type="text" 
                       v-model="p.name" 
                       @change="saveState" 
                       class="bg-transparent border-b border-transparent hover:border-slate-700 focus:border-indigo-500 focus:outline-none text-xs text-white font-semibold w-24"
+                      title="點擊修改姓名"
                     />
                   </div>
 
@@ -882,16 +890,15 @@
 
         // 預設球員陣容
         const defaultPlayers = [
-          { id: 1, number: "7", name: "黃薇築", isOnCourt: true, playedSeconds: 0, stats: createStatsObject() },
-          { id: 2, number: "10", name: "林小明", isOnCourt: true, playedSeconds: 0, stats: createStatsObject() },
-          { id: 3, number: "12", name: "張華", isOnCourt: true, playedSeconds: 0, stats: createStatsObject() },
-          { id: 4, number: "18", name: "李阿榮", isOnCourt: true, playedSeconds: 0, stats: createStatsObject() },
-          { id: 5, number: "30", name: "王大同", isOnCourt: true, playedSeconds: 0, stats: createStatsObject() },
-          { id: 6, number: "1", name: "趙強", isOnCourt: false, playedSeconds: 0, stats: createStatsObject() },
-          { id: 7, number: "5", name: "周盛", isOnCourt: false, playedSeconds: 0, stats: createStatsObject() },
-          { id: 8, number: "23", name: "陳建", isOnCourt: false, playedSeconds: 0, stats: createStatsObject() },
-          { id: 9, number: "24", name: "蔡信", isOnCourt: false, playedSeconds: 0, stats: createStatsObject() },
-          { id: 10, number: "33", name: "楊豪", isOnCourt: false, playedSeconds: 0, stats: createStatsObject() }
+          { id: 1, number: "3", name: "心瑜", isOnCourt: true, playedSeconds: 0, stats: createStatsObject() },
+          { id: 2, number: "4", name: "姍姍", isOnCourt: true, playedSeconds: 0, stats: createStatsObject() },
+          { id: 3, number: "5", name: "郁婷", isOnCourt: true, playedSeconds: 0, stats: createStatsObject() },
+          { id: 4, number: "6", name: "沂霈", isOnCourt: true, playedSeconds: 0, stats: createStatsObject() },
+          { id: 5, number: "8", name: "貝果", isOnCourt: true, playedSeconds: 0, stats: createStatsObject() },
+          { id: 6, number: "11", name: "茹雰", isOnCourt: false, playedSeconds: 0, stats: createStatsObject() },
+          { id: 7, number: "12", name: "舒涵", isOnCourt: false, playedSeconds: 0, stats: createStatsObject() },
+          { id: 8, number: "13", name: "海苔", isOnCourt: false, playedSeconds: 0, stats: createStatsObject() },
+          { id: 9, number: "16", name: "南西", isOnCourt: false, playedSeconds: 0, stats: createStatsObject() }
         ];
 
         const players = ref([]);
@@ -979,6 +986,7 @@
               teamJerseyColor.value = state.teamJerseyColor || "indigo";
               remainingSeconds.value = state.remainingSeconds !== undefined ? state.remainingSeconds : 600;
               players.value = state.players || [];
+              sortPlayers();
               teamFouls.value = state.teamFouls || 0;
               teamTimeouts.value = state.teamTimeouts || 0;
               logs.value = state.logs || [];
@@ -1192,6 +1200,19 @@
           saveState();
         }
 
+        function sortPlayers() {
+          players.value.sort((a, b) => {
+            const numA = parseInt(a.number, 10) || 0;
+            const numB = parseInt(b.number, 10) || 0;
+            return numA - numB;
+          });
+        }
+
+        function onPlayerNumberChange() {
+          sortPlayers();
+          saveState();
+        }
+
         // Supabase 雲端儲存 API 與連線功能
         let supabaseClientInstance = null;
 
@@ -1349,6 +1370,7 @@
               currentQuarter.value = isNaN(Number(data.quarter)) ? data.quarter : Number(data.quarter);
               remainingSeconds.value = data.remaining_seconds;
               players.value = data.players;
+              sortPlayers();
               logs.value = data.logs;
               teamFouls.value = data.team_fouls;
               teamTimeouts.value = data.team_timeouts;
@@ -1727,6 +1749,8 @@
             stats: createStatsObject()
           });
 
+          sortPlayers();
+
           newPlayerName.value = "";
           newPlayerNumber.value = "";
           
@@ -1956,7 +1980,7 @@
           confirmResetGame, resetGame, formatMinutes, toggleSound, copyTextReport, exportCSV, saveState,
           toggleTimer, adjustTime, teamTimeouts, recordTimeout, maxTimeouts,
           supabaseUrl, supabaseKey, isSupabaseConnected, isSupabaseSyncing, supabaseGamesList, isAutoSyncEnabled, currentGameCloudId,
-          testSupabaseConnection, disconnectSupabase, saveToSupabase, fetchCloudGames, loadGameFromCloud, deleteGameFromCloud, toggleAutoSync
+          testSupabaseConnection, disconnectSupabase, saveToSupabase, fetchCloudGames, loadGameFromCloud, deleteGameFromCloud, toggleAutoSync, onPlayerNumberChange
         };
       }
     }).mount('#app');
