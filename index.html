@@ -10,6 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Outfit:wght@300;400;500;700;900&display=swap" rel="stylesheet">
   <!-- Vue 3 Global -->
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <!-- Supabase JS Client SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- FontAwesome Icons -->
@@ -465,6 +467,13 @@
             >
               <i class="fa-solid fa-users-gear mr-1"></i> 名單管理
             </button>
+            <button 
+              @click="activeTab = 'cloud'" 
+              :class="activeTab === 'cloud' ? 'border-b-2 border-indigo-500 text-white font-bold bg-slate-900/30' : 'text-slate-400 hover:text-slate-200'"
+              class="flex-1 py-2.5 text-xs text-center transition"
+            >
+              <i class="fa-solid fa-cloud mr-1"></i> 雲端同步
+            </button>
           </div>
 
           <!-- 分頁內容 -->
@@ -633,6 +642,136 @@
               </p>
             </div>
             
+            <!-- 4. 雲端同步 (Cloud) -->
+            <div v-show="activeTab === 'cloud'" class="space-y-4">
+              <!-- 未連接狀態 -->
+              <div v-if="!isSupabaseConnected" class="space-y-3">
+                <div class="bg-slate-950/40 p-3 rounded-xl border border-slate-800 space-y-3">
+                  <div class="flex items-center space-x-1.5 text-xs text-slate-300 font-bold">
+                    <i class="fa-solid fa-circle-exclamation text-amber-500 animate-pulse"></i>
+                    <span>串接 Supabase 雲端資料庫</span>
+                  </div>
+                  <p class="text-[10px] text-slate-500 leading-normal">
+                    設定您的 Supabase 專案 API，即可將攻守紀錄同步儲存至雲端，並支援跨裝置載入與多人協作。
+                  </p>
+                  
+                  <div>
+                    <label class="text-[9px] text-slate-400 block mb-0.5">Supabase URL</label>
+                    <input 
+                      type="text" 
+                      v-model="supabaseUrl" 
+                      placeholder="https://xxxx.supabase.co" 
+                      class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:border-indigo-500 focus:outline-none font-sans"
+                    >
+                  </div>
+                  <div>
+                    <label class="text-[9px] text-slate-400 block mb-0.5">Supabase Anon Key (公鑰)</label>
+                    <input 
+                      type="password" 
+                      v-model="supabaseKey" 
+                      placeholder="eyJhbGciOiJIUzI1Ni..." 
+                      class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:border-indigo-500 focus:outline-none font-mono"
+                    >
+                  </div>
+                  
+                  <button 
+                    @click="testSupabaseConnection(false)" 
+                    class="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2 rounded-xl transition flex items-center justify-center gap-1.5"
+                  >
+                    <i class="fa-solid fa-link"></i> 測試並連接
+                  </button>
+                </div>
+              </div>
+
+              <!-- 已連接狀態 -->
+              <div v-else class="space-y-3">
+                <div class="bg-slate-950/40 p-3 rounded-xl border border-slate-800 space-y-3">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-1.5 text-xs text-emerald-400 font-bold">
+                      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <span>已連線至 Supabase</span>
+                    </div>
+                    <button 
+                      @click="disconnectSupabase" 
+                      class="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold transition"
+                    >
+                      重新設定
+                    </button>
+                  </div>
+
+                  <div class="flex flex-col gap-2">
+                    <button 
+                      @click="saveToSupabase(false)" 
+                      :disabled="isSupabaseSyncing"
+                      class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 shadow-glow-emerald"
+                    >
+                      <i v-if="isSupabaseSyncing" class="fa-solid fa-circle-notch animate-spin"></i>
+                      <i v-else class="fa-solid fa-cloud-arrow-up"></i>
+                      <span>{{ currentGameCloudId ? '更新此場比賽至雲端' : '儲存此場新比賽至雲端' }}</span>
+                    </button>
+
+                    <!-- 自動同步開關 -->
+                    <label class="flex items-center space-x-2 text-[10px] text-slate-400 select-none py-1 cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        v-model="isAutoSyncEnabled" 
+                        @change="toggleAutoSync"
+                        class="rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-slate-950"
+                      >
+                      <span>啟用背景自動同步 (每節切換/時間暫停時自動存檔)</span>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- 雲端歷史紀錄列表 -->
+                <div class="space-y-2">
+                  <div class="flex items-center justify-between">
+                    <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">🗂️ 雲端歷史賽事</h3>
+                    <button @click="fetchCloudGames(false)" class="text-[9px] text-indigo-400 hover:text-indigo-300 transition">
+                      <i class="fa-solid fa-arrows-rotate mr-0.5"></i> 重新整理
+                    </button>
+                  </div>
+                  
+                  <div class="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
+                    <div v-if="supabaseGamesList.length === 0" class="text-center py-6 text-[10px] text-slate-600">
+                      雲端資料庫尚無已儲存的賽事。
+                    </div>
+                    <div 
+                      v-for="game in supabaseGamesList" 
+                      :key="game.id"
+                      :class="currentGameCloudId === game.id ? 'border-indigo-500/80 bg-indigo-950/20' : 'border-slate-800 hover:border-slate-700 bg-slate-850/20'"
+                      class="border rounded-xl p-2 flex items-center justify-between transition"
+                    >
+                      <div class="text-left flex-1 min-w-0 pr-2">
+                        <div class="flex items-center space-x-1">
+                          <span class="text-[10px] font-bold text-slate-200 truncate block max-w-[90px]">{{ game.team_name }}</span>
+                          <span class="text-[8px] bg-slate-850 text-slate-400 px-1 rounded scale-90">{{ game.quarter }}</span>
+                        </div>
+                        <span class="text-[8px] text-slate-500 font-mono block mt-0.5">{{ game.game_date }} | {{ game.score }} 分</span>
+                      </div>
+                      
+                      <div class="flex items-center space-x-1.5">
+                        <button 
+                          @click="loadGameFromCloud(game.id)" 
+                          class="bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white text-[9px] font-bold px-2 py-0.5 rounded transition"
+                        >
+                          載入
+                        </button>
+                        <button 
+                          @click="deleteGameFromCloud(game.id)" 
+                          class="text-slate-600 hover:text-rose-400 p-1 rounded transition"
+                          title="從雲端刪除此紀錄"
+                        >
+                          <i class="fa-solid fa-trash-can text-[9px]"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+            
           </div>
         </div>
 
@@ -768,6 +907,15 @@
           if (currentQuarter.value === 3 || currentQuarter.value === 4) return 3;
           return 1; // OT
         });
+
+        // Supabase 雲端儲存相關 state
+        const supabaseUrl = ref(localStorage.getItem("supabase_url") || "");
+        const supabaseKey = ref(localStorage.getItem("supabase_key") || "");
+        const isSupabaseConnected = ref(false);
+        const isSupabaseSyncing = ref(false);
+        const supabaseGamesList = ref([]);
+        const isAutoSyncEnabled = ref(localStorage.getItem("supabase_autosync") === "1");
+        const currentGameCloudId = ref(localStorage.getItem("supabase_game_id") || null);
         
         // 事件 Log 與歷史紀錄 (歷史堆疊用於 Undo)
         const logs = ref([]);
@@ -835,6 +983,7 @@
               teamTimeouts.value = state.teamTimeouts || 0;
               logs.value = state.logs || [];
               history.value = state.history || [];
+              currentGameCloudId.value = localStorage.getItem("supabase_game_id") || null;
             } catch (e) {
               console.error("解析本機儲存資料失敗，載入預設值", e);
               resetToDefault();
@@ -853,6 +1002,8 @@
           players.value = JSON.parse(JSON.stringify(defaultPlayers));
           teamFouls.value = 0;
           teamTimeouts.value = 0;
+          currentGameCloudId.value = null;
+          localStorage.removeItem("supabase_game_id");
           logs.value = [];
           history.value = [];
           saveState();
@@ -905,6 +1056,9 @@
               clearInterval(gameTimerInterval);
             }
             saveState();
+            if (isAutoSyncEnabled.value && isSupabaseConnected.value) {
+              saveToSupabase(true);
+            }
           }
         }
 
@@ -979,6 +1133,10 @@
           });
 
           saveState();
+          
+          if (isAutoSyncEnabled.value && isSupabaseConnected.value) {
+            saveToSupabase(true);
+          }
         }
 
         // 爭球箭頭切換
@@ -1034,17 +1192,214 @@
           saveState();
         }
 
-        // 球衣顏色選擇
-        function changeJerseyColor(colorName) {
-          playClickSound(440, 0.05);
-          teamJerseyColor.value = colorName;
-          saveState();
+        // Supabase 雲端儲存 API 與連線功能
+        let supabaseClientInstance = null;
+
+        function getSupabaseClient() {
+          if (supabaseClientInstance) return supabaseClientInstance;
+          if (supabaseUrl.value && supabaseKey.value) {
+            try {
+              supabaseClientInstance = supabase.createClient(supabaseUrl.value, supabaseKey.value);
+              return supabaseClientInstance;
+            } catch (e) {
+              console.error("初始化 Supabase 客戶端失敗", e);
+            }
+          }
+          return null;
         }
 
-        // 根據名稱獲得 Hex 碼
-        function getJerseyHex(colorName) {
-          const matched = jerseyColors.find(c => c.name === colorName);
-          return matched ? matched.hex : '#6366f1';
+        async function testSupabaseConnection(silent = false) {
+          if (!supabaseUrl.value || !supabaseKey.value) {
+            if (!silent) showToast("請輸入完整的 URL 與 Anon Key！");
+            return;
+          }
+          try {
+            supabaseClientInstance = supabase.createClient(supabaseUrl.value, supabaseKey.value);
+            const { data, error } = await supabaseClientInstance
+              .from('game_records')
+              .select('id')
+              .limit(1);
+              
+            if (error) throw error;
+            
+            isSupabaseConnected.value = true;
+            localStorage.setItem("supabase_url", supabaseUrl.value);
+            localStorage.setItem("supabase_key", supabaseKey.value);
+            
+            // 抓取雲端列表
+            fetchCloudGames(true);
+            
+            if (!silent) showToast("Supabase 資料庫連線成功！");
+          } catch (e) {
+            isSupabaseConnected.value = false;
+            supabaseClientInstance = null;
+            if (!silent) {
+              console.error(e);
+              showToast("連線失敗，請檢查網址/金鑰及資料表 `game_records` 是否已建立！");
+            }
+          }
+        }
+
+        function disconnectSupabase() {
+          isSupabaseConnected.value = false;
+          supabaseClientInstance = null;
+          supabaseUrl.value = "";
+          supabaseKey.value = "";
+          localStorage.removeItem("supabase_url");
+          localStorage.removeItem("supabase_key");
+          currentGameCloudId.value = null;
+          localStorage.removeItem("supabase_game_id");
+          supabaseGamesList.value = [];
+          showToast("已中斷雲端連線並清除密鑰設定");
+        }
+
+        async function saveToSupabase(silent = false) {
+          const client = getSupabaseClient();
+          if (!client || !isSupabaseConnected.value) {
+            if (!silent) showToast("雲端資料庫未連線，無法上傳");
+            return;
+          }
+          
+          isSupabaseSyncing.value = true;
+          
+          const payload = {
+            team_name: teamName.value,
+            score: teamTotalPoints.value,
+            quarter: String(currentQuarter.value),
+            remaining_seconds: remainingSeconds.value,
+            players: players.value,
+            logs: logs.value,
+            team_fouls: teamFouls.value,
+            team_timeouts: teamTimeouts.value
+          };
+          
+          try {
+            if (currentGameCloudId.value) {
+              const { error } = await client
+                .from('game_records')
+                .update(payload)
+                .eq('id', currentGameCloudId.value);
+                
+              if (error) throw error;
+              if (!silent) showToast("雲端比賽紀錄已更新！");
+            } else {
+              const { data, error } = await client
+                .from('game_records')
+                .insert(payload)
+                .select('id')
+                .single();
+                
+              if (error) throw error;
+              if (data && data.id) {
+                currentGameCloudId.value = data.id;
+                localStorage.setItem("supabase_game_id", data.id);
+              }
+              if (!silent) showToast("全新比賽紀錄已上傳至雲端！");
+            }
+            fetchCloudGames(true);
+          } catch (e) {
+            console.error(e);
+            if (!silent) showToast("上傳失敗，請檢查 Supabase 表格設定");
+          } finally {
+            isSupabaseSyncing.value = false;
+          }
+        }
+
+        async function fetchCloudGames(silent = false) {
+          const client = getSupabaseClient();
+          if (!client || !isSupabaseConnected.value) return;
+          
+          try {
+            const { data, error } = await client
+              .from('game_records')
+              .select('id, team_name, game_date, score, quarter')
+              .order('created_at', { ascending: false });
+              
+            if (error) throw error;
+            supabaseGamesList.value = data || [];
+            if (!silent) showToast("雲端賽事列表已更新");
+          } catch (e) {
+            console.error(e);
+          }
+        }
+
+        async function loadGameFromCloud(gameId) {
+          const client = getSupabaseClient();
+          if (!client || !isSupabaseConnected.value) return;
+          
+          if (!confirm("載入此雲端比賽將會覆蓋您目前的本地記錄，是否確定？")) {
+            return;
+          }
+          
+          try {
+            const { data, error } = await client
+              .from('game_records')
+              .select('*')
+              .eq('id', gameId)
+              .single();
+              
+            if (error) throw error;
+            if (data) {
+              if (isTimerRunning.value) {
+                isTimerRunning.value = false;
+                if (gameTimerInterval) clearInterval(gameTimerInterval);
+              }
+              
+              teamName.value = data.team_name;
+              currentQuarter.value = isNaN(Number(data.quarter)) ? data.quarter : Number(data.quarter);
+              remainingSeconds.value = data.remaining_seconds;
+              players.value = data.players;
+              logs.value = data.logs;
+              teamFouls.value = data.team_fouls;
+              teamTimeouts.value = data.team_timeouts;
+              
+              currentGameCloudId.value = data.id;
+              localStorage.setItem("supabase_game_id", data.id);
+              
+              history.value = [];
+              selectedCourtPlayer.value = null;
+              
+              saveState();
+              showToast("已成功載入該場雲端紀錄！");
+            }
+          } catch (e) {
+            console.error(e);
+            showToast("載入雲端紀錄失敗");
+          }
+        }
+
+        async function deleteGameFromCloud(gameId) {
+          const client = getSupabaseClient();
+          if (!client || !isSupabaseConnected.value) return;
+          
+          if (!confirm("確定要將此場賽事紀錄從雲端永久刪除嗎？（此操作無法復原）")) {
+            return;
+          }
+          
+          try {
+            const { error } = await client
+              .from('game_records')
+              .delete()
+              .eq('id', gameId);
+              
+            if (error) throw error;
+            
+            if (currentGameCloudId.value === gameId) {
+              currentGameCloudId.value = null;
+              localStorage.removeItem("supabase_game_id");
+            }
+            
+            fetchCloudGames(true);
+            showToast("雲端比賽紀錄已刪除");
+          } catch (e) {
+            console.error(e);
+            showToast("刪除雲端紀錄失敗");
+          }
+        }
+
+        function toggleAutoSync() {
+          localStorage.setItem("supabase_autosync", isAutoSyncEnabled.value ? "1" : "0");
+          showToast(isAutoSyncEnabled.value ? "自動同步已開啟" : "自動同步已關閉");
         }
 
         // 場上球員選取
@@ -1423,6 +1778,8 @@
           possessionArrow.value = "W";
           teamFouls.value = 0;
           teamTimeouts.value = 0;
+          currentGameCloudId.value = null;
+          localStorage.removeItem("supabase_game_id");
           logs.value = [];
           history.value = [];
           selectedCourtPlayer.value = null;
@@ -1565,6 +1922,11 @@
           
           // 監聽鍵盤快捷鍵以供快速暫停/播放時間 (對齊計時)
           window.addEventListener("keydown", handleGlobalKeydown);
+
+          // 自動嘗試並連接 Supabase
+          if (supabaseUrl.value && supabaseKey.value) {
+            testSupabaseConnection(true);
+          }
         });
 
         onUnmounted(() => {
@@ -1588,11 +1950,13 @@
           isSoundEnabled, showResetModal, toastMessage, players, selectedCourtPlayer,
           teamFouls, logs, history, jerseyColors, newPlayerName, newPlayerNumber,
           onCourtPlayers, benchPlayers, teamTotalPoints, formattedTime,
-          confirmTimeEdit, changeQuarter, togglePossession, changeJerseyColor, getJerseyHex,
+          confirmTimeEdit, changeQuarter, togglePossession,
           selectCourtPlayer, clearCourtSelection, handleBenchPlayerClick, togglePlayerCourtStatus,
           recordAction, undo, deleteSpecificLog, addNewPlayer, removePlayer,
           confirmResetGame, resetGame, formatMinutes, toggleSound, copyTextReport, exportCSV, saveState,
-          toggleTimer, adjustTime, teamTimeouts, recordTimeout, maxTimeouts
+          toggleTimer, adjustTime, teamTimeouts, recordTimeout, maxTimeouts,
+          supabaseUrl, supabaseKey, isSupabaseConnected, isSupabaseSyncing, supabaseGamesList, isAutoSyncEnabled, currentGameCloudId,
+          testSupabaseConnection, disconnectSupabase, saveToSupabase, fetchCloudGames, loadGameFromCloud, deleteGameFromCloud, toggleAutoSync
         };
       }
     }).mount('#app');
