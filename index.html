@@ -401,6 +401,22 @@
 
           <div class="h-10 w-px bg-slate-800"></div>
 
+          <!-- 暫停次數與按鈕 -->
+          <div class="text-center">
+            <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">暫停次數</div>
+            <div class="flex items-center justify-center space-x-1.5 mt-1">
+              <span class="text-xl font-mono font-bold text-slate-200">{{ teamTimeouts }}</span>
+              <button 
+                @click="recordTimeout" 
+                class="bg-amber-600/25 hover:bg-amber-600 border border-amber-500/30 hover:border-amber-500 text-amber-300 hover:text-white px-2 py-0.5 rounded text-[10px] font-bold transition"
+              >
+                叫暫停
+              </button>
+            </div>
+          </div>
+
+          <div class="h-10 w-px bg-slate-800"></div>
+
           <!-- 球衣配色設定 -->
           <div class="text-right">
             <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">球衣配色</div>
@@ -739,6 +755,7 @@
         
         // 團隊數據 (本節犯規為節連動，會依 Quarter 歸零或累計？一般大會團犯單節五犯，我們獨立記錄。可以按單節累計，重設時重算)
         const teamFouls = ref(0); 
+        const teamTimeouts = ref(0); // 暫停次數
         
         // 事件 Log 與歷史紀錄 (歷史堆疊用於 Undo)
         const logs = ref([]);
@@ -803,6 +820,7 @@
               remainingSeconds.value = state.remainingSeconds !== undefined ? state.remainingSeconds : 600;
               players.value = state.players || [];
               teamFouls.value = state.teamFouls || 0;
+              teamTimeouts.value = state.teamTimeouts || 0;
               logs.value = state.logs || [];
               history.value = state.history || [];
             } catch (e) {
@@ -822,6 +840,7 @@
           remainingSeconds.value = 600;
           players.value = JSON.parse(JSON.stringify(defaultPlayers));
           teamFouls.value = 0;
+          teamTimeouts.value = 0;
           logs.value = [];
           history.value = [];
           saveState();
@@ -837,6 +856,7 @@
             remainingSeconds: remainingSeconds.value,
             players: players.value,
             teamFouls: teamFouls.value,
+            teamTimeouts: teamTimeouts.value,
             logs: logs.value,
             history: history.value
           };
@@ -959,6 +979,33 @@
             meta: { prev, new: possessionArrow.value }
           });
 
+          saveState();
+        }
+
+        // 記錄暫停
+        function recordTimeout() {
+          pushHistoryState();
+          
+          // 自動暫停計時器
+          if (isTimerRunning.value) {
+            isTimerRunning.value = false;
+            if (gameTimerInterval) {
+              clearInterval(gameTimerInterval);
+            }
+          }
+          
+          teamTimeouts.value++;
+          
+          logs.value.unshift({
+            id: Date.now(),
+            quarter: currentQuarter.value,
+            timeStr: formattedTime.value,
+            actionText: `${teamName.value} 請求暫停 (累計第 ${teamTimeouts.value} 次)`,
+            color: '#fbbf24', // 黃色
+            actionType: 'TIMEOUT'
+          });
+          
+          playClickSound(349.23, 0.15); // F4
           saveState();
         }
 
@@ -1179,6 +1226,7 @@
             remainingSeconds: remainingSeconds.value,
             players: JSON.parse(JSON.stringify(players.value)),
             teamFouls: teamFouls.value,
+            teamTimeouts: teamTimeouts.value,
             logs: JSON.parse(JSON.stringify(logs.value))
           };
           
@@ -1197,6 +1245,7 @@
           remainingSeconds.value = prevState.remainingSeconds;
           players.value = prevState.players;
           teamFouls.value = prevState.teamFouls;
+          teamTimeouts.value = prevState.teamTimeouts || 0;
           logs.value = prevState.logs;
           
           // 選取球員在 Undo 後若是已不存在/已下場，就取消選取
@@ -1253,6 +1302,8 @@
             currentQuarter.value = logItem.meta.prevQ;
           } else if (logItem.actionType === 'POSSESSION') {
             possessionArrow.value = logItem.meta.prev;
+          } else if (logItem.actionType === 'TIMEOUT') {
+            teamTimeouts.value = Math.max(0, teamTimeouts.value - 1);
           }
 
           // 2. 從 logs 陣列移除
@@ -1346,6 +1397,7 @@
           currentQuarter.value = 1;
           possessionArrow.value = "W";
           teamFouls.value = 0;
+          teamTimeouts.value = 0;
           logs.value = [];
           history.value = [];
           selectedCourtPlayer.value = null;
@@ -1515,7 +1567,7 @@
           selectCourtPlayer, clearCourtSelection, handleBenchPlayerClick, togglePlayerCourtStatus,
           recordAction, undo, deleteSpecificLog, addNewPlayer, removePlayer,
           confirmResetGame, resetGame, formatMinutes, toggleSound, copyTextReport, exportCSV, saveState,
-          toggleTimer, adjustTime
+          toggleTimer, adjustTime, teamTimeouts, recordTimeout
         };
       }
     }).mount('#app');
