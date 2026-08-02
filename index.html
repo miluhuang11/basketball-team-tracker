@@ -413,14 +413,25 @@
 
           <div class="h-10 w-px bg-slate-800"></div>
 
-          <!-- 暫停次數與按鈕 -->
-          <div class="text-center">
-            <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">暫停次數</div>
-            <div class="flex items-center justify-center space-x-1.5 mt-1">
-              <span class="text-xl font-mono font-bold text-slate-200">{{ teamTimeouts }}</span>
+          <!-- 暫停次數（圈圈滿/空指示圖示與按鈕） -->
+          <div class="text-center flex flex-col items-center">
+            <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">暫停次數</div>
+            
+            <div class="flex items-center space-x-2.5 mt-0.5">
+              <!-- 圈圈滿/空指示器 -->
+              <div class="flex space-x-1">
+                <span 
+                  v-for="i in maxTimeouts" 
+                  :key="i"
+                  :class="i <= (maxTimeouts - teamTimeouts) ? 'bg-amber-500 shadow-glow-amber border-transparent' : 'bg-slate-950 border border-slate-700'"
+                  class="w-2.5 h-2.5 rounded-full transition-all duration-300"
+                ></span>
+              </div>
+              
               <button 
                 @click="recordTimeout" 
-                class="bg-amber-600/25 hover:bg-amber-600 border border-amber-500/30 hover:border-amber-500 text-amber-300 hover:text-white px-2 py-0.5 rounded text-[10px] font-bold transition"
+                :disabled="teamTimeouts >= maxTimeouts"
+                class="bg-amber-600/20 hover:bg-amber-500 border border-amber-600/40 hover:border-amber-500 text-amber-300 hover:text-white disabled:opacity-30 disabled:hover:bg-amber-600/20 disabled:hover:text-amber-300 px-2 py-0.5 rounded text-[10px] font-bold transition"
               >
                 叫暫停
               </button>
@@ -762,6 +773,13 @@
         const teamFouls = ref(0); 
         const teamTimeouts = ref(0); // 暫停次數
         
+        const maxTimeouts = computed(() => {
+          // FIBA 規則：上半場（Q1、Q2）共 2 次暫停；下半場（Q3、Q4）共 3 次暫停；OT 每次 1 次
+          if (currentQuarter.value === 1 || currentQuarter.value === 2) return 2;
+          if (currentQuarter.value === 3 || currentQuarter.value === 4) return 3;
+          return 1; // OT
+        });
+        
         // 事件 Log 與歷史紀錄 (歷史堆疊用於 Undo)
         const logs = ref([]);
         const history = ref([]); // 儲存 state 的 Deep Clone 用於全面 Undo
@@ -953,6 +971,14 @@
             note += ` (本節團犯已自動歸零)`;
           }
 
+          // 判斷是否需要歸零暫停次數（上半場到下半場、或進入延長賽）
+          const isPrevHalf1 = (prevQ === 1 || prevQ === 2);
+          const isNewHalf2 = (q === 3 || q === 4);
+          if ((isPrevHalf1 && isNewHalf2) || q === 'OT' || (prevQ === 'OT' && q === 'OT')) {
+            teamTimeouts.value = 0;
+            note += ` (暫停次數已重設)`;
+          }
+
           logs.value.unshift({
             id: Date.now(),
             quarter: q,
@@ -989,6 +1015,11 @@
 
         // 記錄暫停
         function recordTimeout() {
+          if (teamTimeouts.value >= maxTimeouts.value) {
+            showToast("本階段的暫停次數已用盡！");
+            return;
+          }
+          
           pushHistoryState();
           
           // 自動暫停計時器
@@ -1572,7 +1603,7 @@
           selectCourtPlayer, clearCourtSelection, handleBenchPlayerClick, togglePlayerCourtStatus,
           recordAction, undo, deleteSpecificLog, addNewPlayer, removePlayer,
           confirmResetGame, resetGame, formatMinutes, toggleSound, copyTextReport, exportCSV, saveState,
-          toggleTimer, adjustTime, teamTimeouts, recordTimeout
+          toggleTimer, adjustTime, teamTimeouts, recordTimeout, maxTimeouts
         };
       }
     }).mount('#app');
