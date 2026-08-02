@@ -965,16 +965,30 @@
           <h3 class="text-lg font-black">開啟新比賽</h3>
         </div>
         
-        <p class="text-sm text-slate-300 mb-6 leading-relaxed">
+        <p class="text-sm text-slate-300 mb-4 leading-relaxed">
           您即將清空本場所有的得分、犯規、事件 Log 與上場時間，並將時間歸時為 <strong class="text-white">10:00</strong>。<br>
           <strong class="text-indigo-400">注意：現有球員背號與名單將會完全保留</strong>，讓您免去重新輸入的繁瑣！此操作無法復原，是否確定？
         </p>
+
+        <!-- 安全勾選確認 -->
+        <label class="flex items-center gap-2 mb-6 cursor-pointer select-none text-xs text-slate-400 hover:text-slate-200 bg-slate-950/40 p-2.5 rounded-lg border border-slate-850">
+          <input 
+            type="checkbox" 
+            v-model="confirmSavedBeforeReset" 
+            class="rounded bg-slate-950 border-slate-800 text-indigo-500 focus:ring-indigo-500 h-4 w-4"
+          >
+          <span>我確認本場數據已儲存（複製報告或同步雲端）</span>
+        </label>
 
         <div class="flex gap-3">
           <button @click="showResetModal = false" class="flex-1 bg-slate-800 hover:bg-slate-700 py-2.5 rounded-xl font-bold transition text-sm">
             取消
           </button>
-          <button @click="resetGame" class="flex-1 bg-rose-700 hover:bg-rose-600 text-white py-2.5 rounded-xl font-bold transition text-sm">
+          <button 
+            @click="resetGame" 
+            :disabled="!confirmSavedBeforeReset"
+            class="flex-1 bg-rose-700 hover:bg-rose-600 text-white py-2.5 rounded-xl font-bold transition text-sm disabled:opacity-30 disabled:hover:bg-rose-700"
+          >
             確定開啟新比賽
           </button>
         </div>
@@ -1009,6 +1023,7 @@
         const activeTab = ref("bench"); // 'bench', 'boxscore', 'roster'
         const showFoulSelector = ref(false);
         const isBoxscoreMaximized = ref(false);
+        const confirmSavedBeforeReset = ref(false);
         
         // 計時器相關
         const remainingSeconds = ref(600); // 預設 10 分鐘 (600秒)
@@ -2117,6 +2132,7 @@
         // 觸發重設對話框
         function confirmResetGame() {
           playClickSound(220, 0.1);
+          confirmSavedBeforeReset.value = false;
           showResetModal.value = true;
         }
 
@@ -2439,7 +2455,7 @@
           testSupabaseConnection, disconnectSupabase, saveToSupabase, fetchCloudGames, loadGameFromCloud, deleteGameFromCloud, toggleAutoSync, onPlayerNumberChange, confirmRestoreDefaultRoster,
           boxscoreQuarterTab, boxscoreTabs, getDisplaySeconds, getDisplayStats,
           showFoulSelector, recordFoul, displayQuarterFouls, formatQuarterFouls, qFoulsString,
-          isBoxscoreMaximized
+          isBoxscoreMaximized, confirmSavedBeforeReset
         };
       }
     }).mount('#app');
