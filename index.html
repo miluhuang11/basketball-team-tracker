@@ -695,7 +695,7 @@
     createApp({
       setup() {
         // 基本設定與球隊
-        const teamName = ref("自家籃球隊");
+        const teamName = ref("東吳女籃");
         const currentQuarter = ref(1);
         const quarters = [1, 2, 3, 4, "OT"];
         const possessionArrow = ref("W"); // W = 淺色, B = 深色
@@ -796,7 +796,7 @@
           if (saved) {
             try {
               const state = JSON.parse(saved);
-              teamName.value = state.teamName || "自家籃球隊";
+              teamName.value = state.teamName || "東吳女籃";
               currentQuarter.value = state.currentQuarter || 1;
               possessionArrow.value = state.possessionArrow || "W";
               teamJerseyColor.value = state.teamJerseyColor || "indigo";
@@ -815,7 +815,7 @@
         }
 
         function resetToDefault() {
-          teamName.value = "自家籃球隊";
+          teamName.value = "東吳女籃";
           currentQuarter.value = 1;
           possessionArrow.value = "W";
           teamJerseyColor.value = "indigo";
