@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>單隊籃球攻守紀錄系統 (Basketball Team Tracker)</title>
+  <!-- Google Fonts: Outfit & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Outfit:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  <!-- Vue 3 Global -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Outfit', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          boxShadow: {
+            'glow-amber': '0 0 15px rgba(245, 158, 11, 0.45)',
+            'glow-indigo': '0 0 15px rgba(99, 102, 241, 0.45)',
+            'glow-emerald': '0 0 15px rgba(16, 185, 129, 0.45)',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom Scrollbar for better dark UI */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.3);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.3);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.5);
+    }
+    /* Hide number input spinners */
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen select-none overflow-x-hidden">
+
+  <div id="app" class="flex flex-col min-h-screen max-h-screen">
+    
+    <!-- 頂端控制列 (Header) -->
+    <header class="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-2 flex items-center justify-between gap-4 shadow-lg shrink-0">
+      
+      <!-- 隊名與節數 -->
+      <div class="flex items-center space-x-3">
+        <div class="flex items-center space-x-2">
+          <i class="fa-solid fa-basketball text-amber-500 text-xl animate-pulse"></i>
+          <input 
+            type="text" 
+            v-model="teamName" 
+            @change="saveState" 
+            class="bg-transparent border-b border-transparent hover:border-slate-700 focus:border-indigo-500 focus:outline-none font-black text-lg text-slate-100 w-36 transition"
+            title="點擊修改隊名"
+          />
+        </div>
+        
+        <!-- 節數選擇器 -->
+        <div class="flex items-center bg-slate-800/80 p-0.5 rounded-lg border border-slate-700">
+          <button 
+            @click="changeQuarter(q)" 
+            v-for="q in quarters" 
+            :key="q"
+            :class="currentQuarter === q ? 'bg-indigo-600 text-white font-bold' : 'text-slate-400 hover:text-white'"
+            class="px-2.5 py-1 rounded text-xs transition"
+          >
+            {{ q }}
+          </button>
+        </div>
+      </div>
+
+      <!-- 大型計時器區域 -->
+      <div class="flex items-center space-x-4">
+        <!-- 時間顯示與控制 -->
+        <div class="flex items-center space-x-2">
+          <!-- 倒數計時大表 -->
+          <div 
+            @click="isEditingTime = true"
+            class="cursor-pointer text-3xl font-mono font-black tracking-widest text-amber-400 bg-black/75 px-4 py-1 rounded-xl border border-slate-700/80 hover:border-amber-500/50 shadow-glow-amber transition"
+          >
+            <span v-if="!isEditingTime">{{ formattedTime }}</span>
+            <input 
+              v-else 
+              type="text" 
+              v-model="tempTimeInput" 
+              @blur="confirmTimeEdit" 
+              @keyup.enter="confirmTimeEdit"
+              class="bg-transparent text-center focus:outline-none w-24 font-mono font-black"
+              ref="timeInputRef"
+            />
+          </div>
+
+          <!-- 計時啟動暫停 -->
+          <button 
+            @click="toggleTimer" 
+            :class="isTimerRunning ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-glow-amber' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-glow-emerald'" 
+            class="h-10 px-4 rounded-xl font-bold transition flex items-center gap-2 text-sm"
+          >
+            <i :class="isTimerRunning ? 'fa-solid fa-pause' : 'fa-solid fa-play'"></i> 
+            <span>{{ isTimerRunning ? '暫停' : '啟動' }}</span>
+          </button>
+        </div>
+
+        <!-- 計時微調 -->
+        <div class="flex items-center bg-slate-800/60 p-1 rounded-xl border border-slate-700/80">
+          <button @click="adjustTime(-10)" class="hover:bg-slate-700 text-slate-300 w-8 h-7 rounded text-xs font-mono font-bold transition">-10s</button>
+          <button @click="adjustTime(-1)" class="hover:bg-slate-700 text-slate-300 w-8 h-7 rounded text-xs font-mono font-bold transition">-1s</button>
+          <div class="w-px h-4 bg-slate-700 mx-1"></div>
+          <button @click="adjustTime(1)" class="hover:bg-slate-700 text-slate-300 w-8 h-7 rounded text-xs font-mono font-bold transition">+1s</button>
+          <button @click="adjustTime(10)" class="hover:bg-slate-700 text-slate-300 w-8 h-7 rounded text-xs font-mono font-bold transition">+10s</button>
+        </div>
+      </div>
+
+      <!-- 右側輔助控制 (爭球、球衣、音效、Undo、重設) -->
+      <div class="flex items-center space-x-3">
+        <!-- 爭球方向箭頭 -->
+        <button 
+          @click="togglePossession" 
+          class="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition text-slate-300"
+        >
+          <span>球權:</span>
+          <span :class="possessionArrow === 'W' ? 'text-white' : 'text-indigo-400'" class="font-bold">
+            {{ possessionArrow === 'W' ? '◄ 淺色 (W)' : '► 深色 (B)' }}
+          </span>
+        </button>
+
+        <!-- 音效開關 -->
+        <button 
+          @click="toggleSound" 
+          class="bg-slate-800 hover:bg-slate-700 border border-slate-700 w-9 h-9 rounded-xl flex items-center justify-center transition"
+          :class="isSoundEnabled ? 'text-amber-400' : 'text-slate-500'"
+          title="切換音效回饋"
+        >
+          <i :class="isSoundEnabled ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark'"></i>
+        </button>
+
+        <!-- Undo 撤銷 -->
+        <button 
+          @click="undo" 
+          :disabled="history.length === 0" 
+          class="bg-slate-800 hover:bg-slate-700 border border-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800 text-rose-400 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 transition shadow-sm"
+        >
+          <i class="fa-solid fa-rotate-left"></i>
+          <span>Undo</span>
+        </button>
+
+        <!-- 重設比賽 -->
+        <button 
+          @click="confirmResetGame" 
+          class="bg-slate-800 hover:bg-rose-950/40 border border-slate-700 hover:border-rose-900/60 text-slate-400 hover:text-rose-400 w-9 h-9 rounded-xl flex items-center justify-center transition"
+          title="重設比賽數據"
+        >
+          <i class="fa-solid fa-trash-can"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- 主區區網格 (Main Layout Grid) -->
+    <main class="flex-1 p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden">
+      
+      <!-- 左半側 (8 欄)：場上球員 & 數據按鍵 -->
+      <section class="lg:col-span-8 flex flex-col gap-4 overflow-y-auto lg:overflow-visible">
+        
+        <!-- 場上 5 人 (動態鎖定卡片) -->
+        <div class="bg-slate-900/60 backdrop-blur-md rounded-2xl p-4 border border-slate-800/80 shadow-md">
+          <div class="flex justify-between items-center mb-3">
+            <div class="flex items-center space-x-2">
+              <span class="w-2.5 h-2.5 rounded-full" :style="{ backgroundColor: getJerseyHex(teamJerseyColor) }"></span>
+              <h2 class="text-xs font-bold tracking-wider text-slate-400 uppercase">🏀 目前場上球員 (點選以記錄動作)</h2>
+            </div>
+            
+            <div class="text-xs">
+              <span v-if="selectedCourtPlayer" class="text-indigo-400 font-semibold animate-pulse">
+                已選取：#{{ selectedCourtPlayer.number }} {{ selectedCourtPlayer.name }}
+              </span>
+              <span v-else class="text-slate-500 font-medium">
+                💡 請先選擇一位場上球員，再點擊下方動作或板凳球員
+              </span>
+            </div>
+          </div>
+
+          <!-- 5 人卡片 -->
+          <div class="grid grid-cols-5 gap-3">
+            <button 
+              v-for="player in onCourtPlayers" 
+              :key="player.id"
+              @click="selectCourtPlayer(player)"
+              :class="[
+                selectedCourtPlayer?.id === player.id 
+                  ? 'border-2 shadow-glow-indigo' 
+                  : 'border border-slate-700/60 hover:bg-slate-800/40'
+              ]"
+              :style="{ borderColor: selectedCourtPlayer?.id === player.id ? getJerseyHex(teamJerseyColor) : '' }"
+              class="bg-slate-800/50 rounded-xl p-3 text-center flex flex-col items-center transition relative overflow-hidden group"
+            >
+              <!-- 球衣顏色背景裝飾 -->
+              <div class="absolute -top-6 -right-6 w-12 h-12 rounded-full opacity-10 group-hover:opacity-20 transition" :style="{ backgroundColor: getJerseyHex(teamJerseyColor) }"></div>
+              
+              <span class="text-2xl font-black font-mono tracking-tight" :style="{ color: selectedCourtPlayer?.id === player.id ? getJerseyHex(teamJerseyColor) : '#f1f5f9' }">
+                #{{ player.number }}
+              </span>
+              <span class="text-xs font-bold text-slate-200 mt-1 truncate w-full">{{ player.name }}</span>
+              
+              <div class="w-full border-t border-slate-700/50 my-1.5"></div>
+              <div class="flex justify-between items-center w-full text-[10px] text-slate-400 font-semibold">
+                <span>得分: <strong class="text-slate-200">{{ player.stats.pts }}</strong></span>
+                <span>犯規: <strong :class="player.stats.pf >= 4 ? 'text-rose-500' : 'text-slate-200'">{{ player.stats.pf }}</strong></span>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- 攻守動作按鍵區 -->
+        <div class="bg-slate-900/60 backdrop-blur-md rounded-2xl p-4 border border-slate-800/80 shadow-md flex-1 flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-center mb-3">
+              <h2 class="text-xs font-bold tracking-wider text-slate-400 uppercase">⚡ 快速數據登錄</h2>
+              <span v-if="!selectedCourtPlayer" class="text-xs text-rose-400/80 font-bold">⚠️ 請先選擇上方球員才能登錄</span>
+            </div>
+            
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <!-- 得分與投籃 -->
+              <button 
+                @click="recordAction('FG2_MADE')" 
+                :disabled="!selectedCourtPlayer"
+                class="bg-emerald-700/90 hover:bg-emerald-600 text-white font-bold p-3.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-emerald-700/90 shadow-sm"
+              >
+                <span class="text-lg">2分進球</span>
+                <span class="text-[10px] font-medium opacity-85">得分 +2 | 2PM+1</span>
+              </button>
+              <button 
+                @click="recordAction('FG2_MISS')" 
+                :disabled="!selectedCourtPlayer"
+                class="bg-slate-800/80 hover:bg-slate-700/80 text-rose-300 border border-rose-950/40 font-bold p-3.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-slate-800/80"
+              >
+                <span class="text-lg">2分投失</span>
+                <span class="text-[10px] font-medium opacity-75">2PA+1</span>
+              </button>
+              <button 
+                @click="recordAction('FG3_MADE')" 
+                :disabled="!selectedCourtPlayer"
+                class="bg-emerald-800/90 hover:bg-emerald-700 text-white font-bold p-3.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-emerald-800/90 shadow-sm"
+              >
+                <span class="text-lg">3分進球</span>
+                <span class="text-[10px] font-medium opacity-85">得分 +3 | 3PM+1</span>
+              </button>
+              <button 
+                @click="recordAction('FG3_MISS')" 
+                :disabled="!selectedCourtPlayer"
+                class="bg-slate-800/80 hover:bg-slate-700/80 text-rose-300 border border-rose-950/40 font-bold p-3.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-slate-800/80"
+              >
+                <span class="text-lg">3分投失</span>
+                <span class="text-[10px] font-medium opacity-75">3PA+1</span>
+              </button>
+
+              <button 
+                @click="recordAction('FT_MADE')" 
+                :disabled="!selectedCourtPlayer"
+                class="bg-teal-700/90 hover:bg-teal-600 text-white font-bold p-3.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-teal-700/90 shadow-sm"
+              >
+                <span class="text-lg">罰球命中</span>
+                <span class="text-[10px] font-medium opacity-85">得分 +1 | FTM+1</span>
+              </button>
+              <button 
+                @click="recordAction('FT_MISS')" 
+                :disabled="!selectedCourtPlayer"
+                class="bg-slate-800/80 hover:bg-slate-700/80 text-rose-300 border border-rose-950/40 font-bold p-3.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-slate-800/80"
+              >
+                <span class="text-lg">罰球不中</span>
+                <span class="text-[10px] font-medium opacity-75">FTA+1</span>
+              </button>
+              
+              <!-- 籃板 -->
+              <button 
+                @click="recordAction('OREB')" 
+                :disabled="!selectedCourtPlayer"
+                class="bg-sky-700/95 hover:bg-sky-600 text-white font-bold p-3.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-sky-700/95 shadow-sm"
+              >
+                <span class="text-lg">進攻籃板</span>
+                <span class="text-[10px] font-medium opacity-85">OREB +1</span>
+              </button>
+              <button 
+                @click="recordAction('DREB')" 
+                :disabled="!selectedCourtPlayer"
+                class="bg-blue-700/95 hover:bg-blue-600 text-white font-bold p-3.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-blue-700/95 shadow-sm"
+              >
+                <span class="text-lg">防守籃板</span>
+                <span class="text-[10px] font-medium opacity-85">DREB +1</span>
+              </button>
+
+              <!-- 其他攻守數據 -->
+              <button 
+                @click="recordAction('AST')" 
+                :disabled="!selectedCourtPlayer"
+                class="bg-indigo-700/90 hover:bg-indigo-650 text-white font-bold p-3.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-indigo-700/90 shadow-sm"
+              >
+                <span class="text-lg">助攻 (AST)</span>
+                <span class="text-[10px] font-medium opacity-85">AST +1</span>
+              </button>
+              <button 
+                @click="recordAction('STL')" 
+                :disabled="!selectedCourtPlayer"
+                class="bg-amber-700/90 hover:bg-amber-600 text-white font-bold p-3.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-amber-700/90 shadow-sm"
+              >
+                <span class="text-lg">抄截 (STL)</span>
+                <span class="text-[10px] font-medium opacity-85">STL +1</span>
+              </button>
+              <button 
+                @click="recordAction('BLK')" 
+                :disabled="!selectedCourtPlayer"
+                class="bg-violet-700/90 hover:bg-violet-650 text-white font-bold p-3.5 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-violet-700/90 shadow-sm"
+              >
+                <span class="text-lg">阻攻 (BLK)</span>
+                <span class="text-[10px] font-medium opacity-85">BLK +1</span>
+              </button>
+              
+              <!-- 負面數據 -->
+              <div class="grid grid-cols-2 gap-2">
+                <button 
+                  @click="recordAction('TO')" 
+                  :disabled="!selectedCourtPlayer"
+                  class="bg-rose-900/80 hover:bg-rose-800 text-rose-100 border border-rose-900 font-bold rounded-xl transition flex flex-col items-center justify-center text-sm disabled:opacity-30"
+                >
+                  <span>失誤 (TO)</span>
+                </button>
+                <button 
+                  @click="recordAction('PF')" 
+                  :disabled="!selectedCourtPlayer"
+                  class="bg-orange-800/80 hover:bg-orange-700 text-orange-100 border border-orange-850 font-bold rounded-xl transition flex flex-col items-center justify-center text-sm disabled:opacity-30"
+                >
+                  <span>犯規 (PF)</span>
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- 球員快速對調指示 -->
+          <div class="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-400">
+            <span class="flex items-center gap-1.5 text-slate-400">
+              <i class="fa-solid fa-circle-info text-indigo-400"></i>
+              <span><strong>如何換人？</strong> 點選上方 [場上球員]，接著在右側 [板凳席] 點選欲換上的球員即可。</span>
+            </span>
+            <button 
+              @click="clearCourtSelection" 
+              v-if="selectedCourtPlayer" 
+              class="text-indigo-400 hover:text-indigo-300 font-semibold px-2 py-1 rounded hover:bg-slate-800 transition"
+            >
+              取消選取球員
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 右半側 (4 欄)：球隊得分、板凳/名單/數據大表 分頁、即時事件 Log -->
+      <section class="lg:col-span-4 flex flex-col gap-4 overflow-hidden">
+        
+        <!-- 比分看板 -->
+        <div class="bg-slate-900/60 backdrop-blur-md rounded-2xl p-4 border border-slate-800/80 shadow-md flex items-center justify-between shrink-0">
+          <div class="text-left">
+            <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">團隊累計得分</div>
+            <div class="text-4xl font-mono font-black text-amber-400 select-all tracking-tight leading-none my-1">{{ teamTotalPoints }}</div>
+          </div>
+          
+          <div class="h-10 w-px bg-slate-800"></div>
+
+          <div class="text-center">
+            <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">團隊犯規 (本節)</div>
+            <div 
+              class="text-2xl font-mono font-bold leading-none mt-1 transition"
+              :class="teamFouls >= 4 ? 'text-rose-500 font-black animate-pulse' : 'text-slate-200'"
+            >
+              {{ teamFouls }} <span class="text-xs text-slate-500">/ 4</span>
+            </div>
+          </div>
+
+          <div class="h-10 w-px bg-slate-800"></div>
+
+          <!-- 球衣配色設定 -->
+          <div class="text-right">
+            <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">球衣配色</div>
+            <div class="flex space-x-1 justify-end">
+              <button 
+                v-for="color in jerseyColors" 
+                :key="color.name"
+                @click="changeJerseyColor(color.name)"
+                :style="{ backgroundColor: color.hex }"
+                class="w-5 h-5 rounded-full border transition"
+                :class="teamJerseyColor === color.name ? 'border-white scale-125 shadow-sm' : 'border-transparent scale-100 hover:scale-110'"
+                :title="color.label"
+              ></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 分頁控制板 (Tab Panel) -->
+        <div class="bg-slate-900/60 backdrop-blur-md rounded-2xl border border-slate-800/80 shadow-md flex-1 flex flex-col overflow-hidden">
+          
+          <!-- 分頁標籤 -->
+          <div class="flex border-b border-slate-800/60 bg-slate-950/40 shrink-0">
+            <button 
+              @click="activeTab = 'bench'" 
+              :class="activeTab === 'bench' ? 'border-b-2 border-indigo-500 text-white font-bold bg-slate-900/30' : 'text-slate-400 hover:text-slate-200'"
+              class="flex-1 py-2.5 text-xs text-center transition"
+            >
+              <i class="fa-solid fa-couch mr-1"></i> 板凳席 ({{ benchPlayers.length }})
+            </button>
+            <button 
+              @click="activeTab = 'boxscore'" 
+              :class="activeTab === 'boxscore' ? 'border-b-2 border-indigo-500 text-white font-bold bg-slate-900/30' : 'text-slate-400 hover:text-slate-200'"
+              class="flex-1 py-2.5 text-xs text-center transition"
+            >
+              <i class="fa-solid fa-table-list mr-1"></i> 數據大表
+            </button>
+            <button 
+              @click="activeTab = 'roster'" 
+              :class="activeTab === 'roster' ? 'border-b-2 border-indigo-500 text-white font-bold bg-slate-900/30' : 'text-slate-400 hover:text-slate-200'"
+              class="flex-1 py-2.5 text-xs text-center transition"
+            >
+              <i class="fa-solid fa-users-gear mr-1"></i> 名單管理
+            </button>
+          </div>
+
+          <!-- 分頁內容 -->
+          <div class="flex-1 overflow-y-auto p-3">
+            
+            <!-- 1. 板凳席 (Bench) -->
+            <div v-show="activeTab === 'bench'" class="space-y-2">
+              <div v-if="benchPlayers.length === 0" class="text-center py-8 text-xs text-slate-500">
+                板凳席沒有球員。請在「名單管理」新增，或進行換人。
+              </div>
+              <div v-else class="grid grid-cols-2 gap-2">
+                <button 
+                  v-for="player in benchPlayers" 
+                  :key="player.id"
+                  @click="handleBenchPlayerClick(player)"
+                  class="bg-slate-800/40 hover:bg-slate-800 border border-slate-700/50 hover:border-indigo-500/50 text-left p-2.5 rounded-xl flex items-center justify-between transition group"
+                >
+                  <div class="flex items-center space-x-2">
+                    <span class="font-mono font-bold text-slate-400 group-hover:text-slate-200">#{{ player.number }}</span>
+                    <span class="text-xs font-bold text-slate-300 group-hover:text-white truncate max-w-[80px]">{{ player.name }}</span>
+                  </div>
+                  <!-- 當場上有選取球員時，顯示替換提示 -->
+                  <div class="text-[10px] px-1.5 py-0.5 rounded transition"
+                    :class="selectedCourtPlayer ? 'bg-indigo-600/30 text-indigo-300 font-bold group-hover:bg-indigo-600 group-hover:text-white' : 'bg-slate-900/50 text-slate-500'"
+                  >
+                    {{ selectedCourtPlayer ? '替換' : '板凳' }}
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <!-- 2. 數據大表 (Box Score) -->
+            <div v-show="activeTab === 'boxscore'" class="space-y-3 h-full flex flex-col justify-between">
+              <div class="overflow-x-auto border border-slate-800 rounded-xl flex-1">
+                <table class="w-full text-[10px] text-left border-collapse font-mono">
+                  <thead>
+                    <tr class="bg-slate-900 text-slate-400 border-b border-slate-800">
+                      <th class="p-2 font-sans font-bold">背號/姓名</th>
+                      <th class="p-2 text-center">時間</th>
+                      <th class="p-2 text-center font-sans font-bold">得分</th>
+                      <th class="p-2 text-center">2分</th>
+                      <th class="p-2 text-center">3分</th>
+                      <th class="p-2 text-center">罰球</th>
+                      <th class="p-2 text-center">助攻</th>
+                      <th class="p-2 text-center">籃板</th>
+                      <th class="p-2 text-center">其他</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-800/60">
+                    <tr 
+                      v-for="p in players" 
+                      :key="p.id" 
+                      class="hover:bg-slate-800/20"
+                      :class="p.isOnCourt ? 'bg-indigo-950/10' : ''"
+                    >
+                      <td class="p-2 font-sans">
+                        <span class="font-bold font-mono text-indigo-400">#{{ p.number }}</span>
+                        <span class="ml-1 text-slate-300 truncate max-w-[60px] inline-block align-bottom">{{ p.name }}</span>
+                        <span v-if="p.isOnCourt" class="text-[8px] bg-indigo-500/20 text-indigo-300 px-1 rounded ml-0.5">場上</span>
+                      </td>
+                      <td class="p-2 text-center text-slate-400">{{ formatMinutes(p.playedSeconds) }}</td>
+                      <td class="p-2 text-center font-bold text-amber-400 text-xs">{{ p.stats.pts }}</td>
+                      <td class="p-2 text-center text-slate-300">{{ p.stats.fg2m }}-{{ p.stats.fg2a }}</td>
+                      <td class="p-2 text-center text-slate-300">{{ p.stats.fg3m }}-{{ p.stats.fg3a }}</td>
+                      <td class="p-2 text-center text-slate-300">{{ p.stats.ftm }}-{{ p.stats.fta }}</td>
+                      <td class="p-2 text-center text-indigo-300 font-bold">{{ p.stats.ast }}</td>
+                      <td class="p-2 text-center text-sky-300">{{ p.stats.oreb + p.stats.dreb }}<span class="text-[8px] text-slate-500">({{ p.stats.oreb }}/{{ p.stats.dreb }})</span></td>
+                      <td class="p-2 text-center text-slate-400">
+                        S:{{ p.stats.stl }}|B:{{ p.stats.blk }}|T:{{ p.stats.to }}|F:{{ p.stats.pf }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- 數據匯出按鈕列 -->
+              <div class="flex space-x-2 pt-2 shrink-0 border-t border-slate-800/40">
+                <button 
+                  @click="copyTextReport" 
+                  class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold py-2 rounded-xl transition flex items-center justify-center gap-1.5"
+                >
+                  <i class="fa-solid fa-copy"></i> 複製文字報告
+                </button>
+                <button 
+                  @click="exportCSV" 
+                  class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold py-2 rounded-xl transition flex items-center justify-center gap-1.5"
+                >
+                  <i class="fa-solid fa-file-csv"></i> 下載 CSV 檔
+                </button>
+              </div>
+            </div>
+
+            <!-- 3. 名單管理 (Roster) -->
+            <div v-show="activeTab === 'roster'" class="space-y-4">
+              <!-- 新增球員表單 -->
+              <form @submit.prevent="addNewPlayer" class="bg-slate-950/40 p-3 rounded-xl border border-slate-800 flex items-center space-x-2">
+                <div class="w-16">
+                  <label class="text-[9px] text-slate-500 block mb-0.5">背號</label>
+                  <input 
+                    type="text" 
+                    v-model="newPlayerNumber" 
+                    placeholder="背號" 
+                    class="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-center text-xs text-white focus:border-indigo-500 focus:outline-none"
+                    required
+                  >
+                </div>
+                <div class="flex-1">
+                  <label class="text-[9px] text-slate-500 block mb-0.5">球員姓名</label>
+                  <input 
+                    type="text" 
+                    v-model="newPlayerName" 
+                    placeholder="球員姓名" 
+                    class="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                    required
+                  >
+                </div>
+                <button 
+                  type="submit" 
+                  class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold h-9 w-9 rounded-lg flex items-center justify-center transition shrink-0 self-end"
+                >
+                  <i class="fa-solid fa-plus"></i>
+                </button>
+              </form>
+
+              <!-- 球員列表與狀態控制 -->
+              <div class="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
+                <div 
+                  v-for="p in players" 
+                  :key="p.id" 
+                  class="bg-slate-800/30 border border-slate-800 rounded-xl p-2.5 flex items-center justify-between"
+                >
+                  <div class="flex items-center space-x-2">
+                    <span class="font-mono font-bold text-slate-400">#{{ p.number }}</span>
+                    <input 
+                      type="text" 
+                      v-model="p.name" 
+                      @change="saveState" 
+                      class="bg-transparent border-b border-transparent hover:border-slate-700 focus:border-indigo-500 focus:outline-none text-xs text-white font-semibold w-24"
+                    />
+                  </div>
+
+                  <div class="flex items-center space-x-2">
+                    <!-- 上場/板凳狀態點選 -->
+                    <button 
+                      @click="togglePlayerCourtStatus(p)" 
+                      :class="p.isOnCourt ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-600/40 font-bold' : 'bg-slate-900/50 text-slate-400 border border-slate-800'"
+                      class="text-[9px] px-2 py-1 rounded-md transition"
+                    >
+                      {{ p.isOnCourt ? '場上 5 人' : '板凳' }}
+                    </button>
+                    
+                    <!-- 刪除按鈕 (防呆：有數據者不可直接刪除) -->
+                    <button 
+                      @click="removePlayer(p)" 
+                      class="text-slate-500 hover:text-rose-400 p-1 rounded hover:bg-slate-800 transition"
+                      title="刪除球員"
+                    >
+                      <i class="fa-solid fa-trash-can text-xs"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <p class="text-[9px] text-slate-500 leading-normal">
+                * 點擊球員姓名可直接編輯修改。<br>
+                * 場上必須維持剛好 5 人以確保上場時間及攻守操作的正確記錄。
+              </p>
+            </div>
+            
+          </div>
+        </div>
+
+        <!-- 即時事件 Log -->
+        <div class="bg-slate-900/60 backdrop-blur-md rounded-2xl p-4 border border-slate-800/80 shadow-md h-[180px] shrink-0 flex flex-col overflow-hidden">
+          <h2 class="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider flex items-center justify-between">
+            <span>📋 即時事件 Log</span>
+            <span class="text-[9px] text-slate-500 font-mono">最新在最上</span>
+          </h2>
+          
+          <div class="space-y-1.5 overflow-y-auto flex-1 text-[11px] pr-1">
+            <div v-if="logs.length === 0" class="text-center py-8 text-xs text-slate-600">
+              尚無任何攻守紀錄事件。
+            </div>
+            <div 
+              v-for="log in logs" 
+              :key="log.id" 
+              class="bg-slate-800/40 p-2 rounded-lg flex justify-between items-center border-l-2"
+              :style="{ borderLeftColor: log.color || '#6366f1' }"
+            >
+              <div>
+                <span class="text-slate-500 font-mono mr-1">[{{ log.quarter }}節 {{ log.timeStr }}]</span>
+                <span v-if="log.playerNumber" class="font-bold text-slate-200">#{{ log.playerNumber }} {{ log.playerName }}</span>
+                <span class="ml-1.5 font-medium" :style="{ color: log.color || '#a5b4fc' }">{{ log.actionText }}</span>
+              </div>
+              
+              <!-- 快速撤銷單筆 Log -->
+              <button 
+                @click="deleteSpecificLog(log)" 
+                class="text-slate-500 hover:text-rose-400 hover:bg-slate-800 p-0.5 rounded transition"
+                title="撤銷此動作"
+              >
+                <i class="fa-solid fa-xmark text-[10px]"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </main>
+
+    <!-- 重設確認 Modal -->
+    <div v-if="showResetModal" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+        <div class="flex items-center space-x-3 text-rose-500 mb-4">
+          <i class="fa-solid fa-circle-exclamation text-2xl animate-bounce"></i>
+          <h3 class="text-lg font-black">重設確認</h3>
+        </div>
+        
+        <p class="text-sm text-slate-300 mb-6 leading-relaxed">
+          您即將重設本場比賽的所有數據（包括得分、犯規、事件 Log 與球員上場時間）。<br>
+          <strong class="text-white">注意：現有球員名單將會保留。</strong>此操作無法復原，是否確定？
+        </p>
+
+        <div class="flex gap-3">
+          <button @click="showResetModal = false" class="flex-1 bg-slate-800 hover:bg-slate-700 py-2.5 rounded-xl font-bold transition text-sm">
+            取消
+          </button>
+          <button @click="resetGame" class="flex-1 bg-rose-700 hover:bg-rose-600 text-white py-2.5 rounded-xl font-bold transition text-sm">
+            確定重設
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 錯誤提示 Toast -->
+    <div 
+      v-if="toastMessage" 
+      class="fixed bottom-6 right-6 bg-rose-600 text-white font-bold px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 z-50 animate-slide-in"
+    >
+      <i class="fa-solid fa-circle-xmark"></i>
+      <span class="text-sm">{{ toastMessage }}</span>
+    </div>
+
+  </div>
+
+  <!-- Vue 3 Core Logic -->
+  <script>
+    const { createApp, ref, computed, onMounted, onUnmounted, watch } = Vue;
+
+    createApp({
+      setup() {
+        // 基本設定與球隊
+        const teamName = ref("自家籃球隊");
+        const currentQuarter = ref(1);
+        const quarters = [1, 2, 3, 4, "OT"];
+        const possessionArrow = ref("W"); // W = 淺色, B = 深色
+        const teamJerseyColor = ref("indigo"); // 預設配色
+        
+        // 頁面選單控制
+        const activeTab = ref("bench"); // 'bench', 'boxscore', 'roster'
+        
+        // 計時器相關
+        const remainingSeconds = ref(600); // 預設 10 分鐘 (600秒)
+        const isTimerRunning = ref(false);
+        const isEditingTime = ref(false);
+        const tempTimeInput = ref("");
+        const timeInputRef = ref(null);
+        let gameTimerInterval = null;
+
+        // 音效相關
+        const isSoundEnabled = ref(true);
+        let audioCtx = null;
+
+        // 提示與對話視窗
+        const showResetModal = ref(false);
+        const toastMessage = ref("");
+
+        // 預設球員陣容
+        const defaultPlayers = [
+          { id: 1, number: "7", name: "黃薇築", isOnCourt: true, playedSeconds: 0, stats: createStatsObject() },
+          { id: 2, number: "10", name: "林小明", isOnCourt: true, playedSeconds: 0, stats: createStatsObject() },
+          { id: 3, number: "12", name: "張華", isOnCourt: true, playedSeconds: 0, stats: createStatsObject() },
+          { id: 4, number: "18", name: "李阿榮", isOnCourt: true, playedSeconds: 0, stats: createStatsObject() },
+          { id: 5, number: "30", name: "王大同", isOnCourt: true, playedSeconds: 0, stats: createStatsObject() },
+          { id: 6, number: "1", name: "趙強", isOnCourt: false, playedSeconds: 0, stats: createStatsObject() },
+          { id: 7, number: "5", name: "周盛", isOnCourt: false, playedSeconds: 0, stats: createStatsObject() },
+          { id: 8, number: "23", name: "陳建", isOnCourt: false, playedSeconds: 0, stats: createStatsObject() },
+          { id: 9, number: "24", name: "蔡信", isOnCourt: false, playedSeconds: 0, stats: createStatsObject() },
+          { id: 10, number: "33", name: "楊豪", isOnCourt: false, playedSeconds: 0, stats: createStatsObject() }
+        ];
+
+        const players = ref([]);
+        const selectedCourtPlayer = ref(null);
+        
+        // 團隊數據 (本節犯規為節連動，會依 Quarter 歸零或累計？一般大會團犯單節五犯，我們獨立記錄。可以按單節累計，重設時重算)
+        const teamFouls = ref(0); 
+        
+        // 事件 Log 與歷史紀錄 (歷史堆疊用於 Undo)
+        const logs = ref([]);
+        const history = ref([]); // 儲存 state 的 Deep Clone 用於全面 Undo
+
+        // 陣容球衣色彩選擇
+        const jerseyColors = [
+          { name: 'white', label: '淺色白', hex: '#ffffff' },
+          { name: 'indigo', label: '深靛藍', hex: '#6366f1' },
+          { name: 'rose', label: '熱情紅', hex: '#f43f5e' },
+          { name: 'emerald', label: '森林綠', hex: '#10b981' },
+          { name: 'amber', label: '活力黃', hex: '#f59e0b' },
+          { name: 'cyan', label: '天空藍', hex: '#06b6d4' },
+          { name: 'black', label: '極致黑', hex: '#090d16' }
+        ];
+
+        // 新增球員輸入欄
+        const newPlayerName = ref("");
+        const newPlayerNumber = ref("");
+
+        // 輔助函式：建立乾淨的統計結構
+        function createStatsObject() {
+          return {
+            pts: 0,    // 得分
+            fg2m: 0,   // 2分命中
+            fg2a: 0,   // 2分出手
+            fg3m: 0,   // 3分命中
+            fg3a: 0,   // 3分出手
+            ftm: 0,    // 罰球命中
+            fta: 0,    // 罰球出手
+            oreb: 0,   // 進攻籃板
+            dreb: 0,   // 防守籃板
+            ast: 0,    // 助攻
+            stl: 0,    // 抄截
+            blk: 0,    // 阻攻
+            to: 0,     // 失誤
+            pf: 0      // 犯規
+          };
+        }
+
+        // 計算屬性
+        const onCourtPlayers = computed(() => players.value.filter(p => p.isOnCourt));
+        const benchPlayers = computed(() => players.value.filter(p => !p.isOnCourt));
+        const teamTotalPoints = computed(() => players.value.reduce((sum, p) => sum + p.stats.pts, 0));
+
+        const formattedTime = computed(() => {
+          const m = Math.floor(remainingSeconds.value / 60).toString().padStart(2, '0');
+          const s = (remainingSeconds.value % 60).toString().padStart(2, '0');
+          return `${m}:${s}`;
+        });
+
+        // 讀取/初始化本機儲存
+        function loadState() {
+          const saved = localStorage.getItem("basketball_tracker_state");
+          if (saved) {
+            try {
+              const state = JSON.parse(saved);
+              teamName.value = state.teamName || "自家籃球隊";
+              currentQuarter.value = state.currentQuarter || 1;
+              possessionArrow.value = state.possessionArrow || "W";
+              teamJerseyColor.value = state.teamJerseyColor || "indigo";
+              remainingSeconds.value = state.remainingSeconds !== undefined ? state.remainingSeconds : 600;
+              players.value = state.players || [];
+              teamFouls.value = state.teamFouls || 0;
+              logs.value = state.logs || [];
+              history.value = state.history || [];
+            } catch (e) {
+              console.error("解析本機儲存資料失敗，載入預設值", e);
+              resetToDefault();
+            }
+          } else {
+            resetToDefault();
+          }
+        }
+
+        function resetToDefault() {
+          teamName.value = "自家籃球隊";
+          currentQuarter.value = 1;
+          possessionArrow.value = "W";
+          teamJerseyColor.value = "indigo";
+          remainingSeconds.value = 600;
+          players.value = JSON.parse(JSON.stringify(defaultPlayers));
+          teamFouls.value = 0;
+          logs.value = [];
+          history.value = [];
+          saveState();
+        }
+
+        // 儲存狀態至本機
+        function saveState() {
+          const state = {
+            teamName: teamName.value,
+            currentQuarter: currentQuarter.value,
+            possessionArrow: possessionArrow.value,
+            teamJerseyColor: teamJerseyColor.value,
+            remainingSeconds: remainingSeconds.value,
+            players: players.value,
+            teamFouls: teamFouls.value,
+            logs: logs.value,
+            history: history.value
+          };
+          localStorage.setItem("basketball_tracker_state", JSON.stringify(state));
+        }
+
+        // 計時器控制
+        function toggleTimer() {
+          playClickSound(523.25, 0.08); // C5
+          isTimerRunning.value = !isTimerRunning.value;
+          if (isTimerRunning.value) {
+            gameTimerInterval = setInterval(() => {
+              if (remainingSeconds.value > 0) {
+                remainingSeconds.value--;
+                // 自動幫場上 5 人增加上場時間 (秒)
+                players.value.forEach(p => {
+                  if (p.isOnCourt) {
+                    p.playedSeconds = (p.playedSeconds || 0) + 1;
+                  }
+                });
+                // 每隔幾秒存一次 state，不要太頻繁以優化效能
+                if (remainingSeconds.value % 5 === 0) {
+                  saveState();
+                }
+              } else {
+                isTimerRunning.value = false;
+                clearInterval(gameTimerInterval);
+                playClickSound(330, 0.5); // 音效提示結束
+                showToast("本節時間結束！");
+              }
+            }, 1000);
+          } else {
+            if (gameTimerInterval) {
+              clearInterval(gameTimerInterval);
+            }
+            saveState();
+          }
+        }
+
+        // 時間微調
+        function adjustTime(sec) {
+          playClickSound(440, 0.05); // A4
+          remainingSeconds.value = Math.max(0, Math.min(3600, remainingSeconds.value + sec));
+          saveState();
+        }
+
+        // 點擊大表進行編輯時間
+        watch(isEditingTime, (val) => {
+          if (val) {
+            tempTimeInput.value = formattedTime.value;
+            // 等 DOM 更新後 focus
+            Vue.nextTick(() => {
+              timeInputRef.value?.focus();
+              timeInputRef.value?.select();
+            });
+          }
+        });
+
+        function confirmTimeEdit() {
+          isEditingTime.value = false;
+          const parts = tempTimeInput.value.split(":");
+          if (parts.length === 2) {
+            const m = parseInt(parts[0], 10);
+            const s = parseInt(parts[1], 10);
+            if (!isNaN(m) && !isNaN(s) && m >= 0 && s >= 0 && s < 60) {
+              remainingSeconds.value = m * 60 + s;
+              saveState();
+              return;
+            }
+          }
+          showToast("時間格式錯誤，請使用 分鐘:秒數 格式，例如 10:00");
+        }
+
+        // 節數切換
+        function changeQuarter(q) {
+          playClickSound(440, 0.05);
+          // 儲存 Undo 歷史
+          pushHistoryState();
+
+          const prevQ = currentQuarter.value;
+          currentQuarter.value = q;
+          
+          // 如果是小節切換，通常國際賽會歸零單節隊犯，此處詢問或提示？
+          // 為求單隊極速操作，小節切換時自動記錄日誌，並可選是否重設團犯 (一般單節歸零)
+          let note = `節數由 Q${prevQ} 切換至 Q${q}`;
+          if (typeof q === 'number' || q === 'OT') {
+            // 詢問或自動歸零本節犯規
+            teamFouls.value = 0;
+            note += ` (本節團犯已自動歸零)`;
+          }
+
+          logs.value.unshift({
+            id: Date.now(),
+            quarter: q,
+            timeStr: formattedTime.value,
+            actionText: note,
+            color: '#60a5fa',
+            actionType: 'QUARTER',
+            meta: { prevQ, newQ: q }
+          });
+
+          saveState();
+        }
+
+        // 爭球箭頭切換
+        function togglePossession() {
+          playClickSound(440, 0.05);
+          pushHistoryState();
+
+          const prev = possessionArrow.value;
+          possessionArrow.value = possessionArrow.value === 'W' ? 'B' : 'W';
+          
+          logs.value.unshift({
+            id: Date.now(),
+            quarter: currentQuarter.value,
+            timeStr: formattedTime.value,
+            actionText: `爭球箭頭轉向：${possessionArrow.value === 'W' ? '◄ 淺色 (W)' : '► 深色 (B)'}`,
+            color: '#34d399',
+            actionType: 'POSSESSION',
+            meta: { prev, new: possessionArrow.value }
+          });
+
+          saveState();
+        }
+
+        // 球衣顏色選擇
+        function changeJerseyColor(colorName) {
+          playClickSound(440, 0.05);
+          teamJerseyColor.value = colorName;
+          saveState();
+        }
+
+        // 根據名稱獲得 Hex 碼
+        function getJerseyHex(colorName) {
+          const matched = jerseyColors.find(c => c.name === colorName);
+          return matched ? matched.hex : '#6366f1';
+        }
+
+        // 場上球員選取
+        function selectCourtPlayer(player) {
+          playClickSound(587.33, 0.06); // D5
+          if (selectedCourtPlayer.value?.id === player.id) {
+            // 重複點選則取消選取
+            selectedCourtPlayer.value = null;
+          } else {
+            selectedCourtPlayer.value = player;
+          }
+        }
+
+        function clearCourtSelection() {
+          selectedCourtPlayer.value = null;
+        }
+
+        // 板凳球員點擊 (若有選取場上球員，則觸換人；否則僅提示)
+        function handleBenchPlayerClick(benchPlayer) {
+          if (selectedCourtPlayer.value) {
+            // 進行快速換人
+            swapPlayers(selectedCourtPlayer.value, benchPlayer);
+          } else {
+            // 提示需先選取場上球員
+            showToast(`請先點選上方場上 5 人之一，再點選 #${benchPlayer.number} 以完成換人`);
+          }
+        }
+
+        // 進行換人邏輯
+        function swapPlayers(courtPlayer, benchPlayer) {
+          playClickSound(349.23, 0.12); // F4 - 換人專用聲音
+          pushHistoryState();
+
+          // 對調場上狀態
+          const outP = players.value.find(p => p.id === courtPlayer.id);
+          const inP = players.value.find(p => p.id === benchPlayer.id);
+          
+          if (outP && inP) {
+            outP.isOnCourt = false;
+            inP.isOnCourt = true;
+            
+            // 寫入事件 Log
+            logs.value.unshift({
+              id: Date.now(),
+              quarter: currentQuarter.value,
+              timeStr: formattedTime.value,
+              playerNumber: inP.number,
+              playerName: inP.name,
+              actionText: `替換下場的 #${outP.number} ${outP.name} 上場`,
+              color: '#38bdf8', // 天空藍
+              actionType: 'SUB',
+              meta: { subOutId: outP.id, subInId: inP.id }
+            });
+
+            // 自動切換選取為新換上的場上球員，以方便立刻繼續操作數據
+            selectedCourtPlayer.value = inP;
+            
+            saveState();
+          }
+        }
+
+        // 手動在名單調整上場/板凳狀態 (需維持 5 人)
+        function togglePlayerCourtStatus(player) {
+          pushHistoryState();
+          const target = players.value.find(p => p.id === player.id);
+          if (!target) return;
+
+          if (target.isOnCourt) {
+            // 欲下場，需確認場上剩下至少 1 人？
+            target.isOnCourt = false;
+          } else {
+            // 欲上場，檢查是否已滿 5 人
+            if (onCourtPlayers.value.length >= 5) {
+              showToast("場上已有 5 人，若要換人請點卡片或在左側操作對調。");
+              return;
+            }
+            target.isOnCourt = true;
+          }
+          saveState();
+        }
+
+        // 記錄攻守動作 (Mode B)
+        function recordAction(actionType) {
+          if (!selectedCourtPlayer.value) {
+            showToast("請先點選一位場上球員再登錄數據");
+            return;
+          }
+          
+          playClickSound(659.25, 0.08); // E5
+          pushHistoryState();
+
+          const p = players.value.find(p => p.id === selectedCourtPlayer.value.id);
+          if (!p) return;
+
+          let text = '';
+          let color = '#a5b4fc'; // 預設亮紫色
+
+          switch (actionType) {
+            case 'FG2_MADE': 
+              p.stats.fg2a++; 
+              p.stats.fg2m++; 
+              p.stats.pts += 2; 
+              text = '2分球投進 (+2)'; 
+              color = '#34d399'; // 綠色
+              break;
+            case 'FG2_MISS': 
+              p.stats.fg2a++; 
+              text = '2分出手沒進'; 
+              color = '#f87171'; // 紅色
+              break;
+            case 'FG3_MADE': 
+              p.stats.fg3a++; 
+              p.stats.fg3m++; 
+              p.stats.pts += 3; 
+              text = '3分長射投進 (+3)'; 
+              color = '#10b981'; // 亮綠
+              break;
+            case 'FG3_MISS': 
+              p.stats.fg3a++; 
+              text = '3分長射沒進'; 
+              color = '#f87171'; 
+              break;
+            case 'FT_MADE':  
+              p.stats.fta++;  
+              p.stats.ftm++;  
+              p.stats.pts += 1; 
+              text = '罰球命中 (+1)'; 
+              color = '#2dd4bf'; // 青色
+              break;
+            case 'FT_MISS':  
+              p.stats.fta++;  
+              text = '罰球沒進'; 
+              color = '#f87171'; 
+              break;
+            case 'OREB':     
+              p.stats.oreb++; 
+              text = '搶下進攻籃板'; 
+              color = '#38bdf8'; // 天空藍
+              break;
+            case 'DREB':     
+              p.stats.dreb++; 
+              text = '抓下防守籃板'; 
+              color = '#60a5fa'; // 藍色
+              break;
+            case 'AST':      
+              p.stats.ast++;  
+              text = '妙傳助攻'; 
+              color = '#818cf8'; // 靛藍
+              break;
+            case 'STL':      
+              p.stats.stl++;  
+              text = '神抄截對手'; 
+              color = '#fbbf24'; // 黃色
+              break;
+            case 'BLK':      
+              p.stats.blk++;  
+              text = '賞了對手火鍋 (BLK)'; 
+              color = '#c084fc'; // 紫色
+              break;
+            case 'TO':       
+              p.stats.to++;   
+              text = '失誤 (Turnover)'; 
+              color = '#fb7185'; // 粉紅
+              break;
+            case 'PF':       
+              p.stats.pf++;   
+              teamFouls.value++; 
+              text = '防守犯規 (PF)'; 
+              color = '#fb923c'; // 橘色
+              // 達加罰警告
+              if (teamFouls.value >= 4) {
+                showToast("團隊犯規已達 4 次！下次起將進入加罰狀態！");
+              }
+              break;
+          }
+
+          // 寫入事件 Log
+          logs.value.unshift({
+            id: Date.now(),
+            quarter: currentQuarter.value,
+            timeStr: formattedTime.value,
+            playerNumber: p.number,
+            playerName: p.name,
+            actionText: text,
+            color: color,
+            playerId: p.id,
+            actionType: actionType
+          });
+
+          // 保留選取狀態，以便該球員若連續得分/失誤時能快速點選
+          saveState();
+        }
+
+        // 保存狀態歷史 (用於 Undo 堆疊)
+        function pushHistoryState() {
+          // 只保留最近 30 次歷史紀錄，避免效能與儲存空間爆炸
+          if (history.value.length >= 30) {
+            history.value.pop();
+          }
+          
+          const snapshot = {
+            currentQuarter: currentQuarter.value,
+            possessionArrow: possessionArrow.value,
+            remainingSeconds: remainingSeconds.value,
+            players: JSON.parse(JSON.stringify(players.value)),
+            teamFouls: teamFouls.value,
+            logs: JSON.parse(JSON.stringify(logs.value))
+          };
+          
+          history.value.unshift(snapshot);
+        }
+
+        // 全面 Undo
+        function undo() {
+          if (history.value.length === 0) return;
+          playClickSound(220, 0.15); // 低音 A3
+          
+          const prevState = history.value.shift();
+          
+          currentQuarter.value = prevState.currentQuarter;
+          possessionArrow.value = prevState.possessionArrow;
+          remainingSeconds.value = prevState.remainingSeconds;
+          players.value = prevState.players;
+          teamFouls.value = prevState.teamFouls;
+          logs.value = prevState.logs;
+          
+          // 選取球員在 Undo 後若是已不存在/已下場，就取消選取
+          if (selectedCourtPlayer.value) {
+            const currentSelected = players.value.find(p => p.id === selectedCourtPlayer.value.id);
+            if (!currentSelected || !currentSelected.isOnCourt) {
+              selectedCourtPlayer.value = null;
+            } else {
+              selectedCourtPlayer.value = currentSelected;
+            }
+          }
+          
+          saveState();
+          showToast("已撤銷上一個動作");
+        }
+
+        // 單獨刪除/撤銷特定的 Log 事件
+        function deleteSpecificLog(logItem) {
+          playClickSound(220, 0.1);
+          pushHistoryState();
+
+          // 1. 找到該 Log 指向的球員與動作
+          const p = players.value.find(p => p.id === logItem.playerId);
+          
+          if (logItem.actionType === 'SUB') {
+            // 若為換人事件，將 subIn 與 subOut 換回來
+            const subOut = players.value.find(p => p.id === logItem.meta.subOutId);
+            const subIn = players.value.find(p => p.id === logItem.meta.subInId);
+            if (subOut && subIn) {
+              subOut.isOnCourt = true;
+              subIn.isOnCourt = false;
+              if (selectedCourtPlayer.value?.id === subIn.id) {
+                selectedCourtPlayer.value = subOut;
+              }
+            }
+          } else if (p) {
+            // 扣除對應統計
+            switch (logItem.actionType) {
+              case 'FG2_MADE': p.stats.fg2a--; p.stats.fg2m--; p.stats.pts -= 2; break;
+              case 'FG2_MISS': p.stats.fg2a--; break;
+              case 'FG3_MADE': p.stats.fg3a--; p.stats.fg3m--; p.stats.pts -= 3; break;
+              case 'FG3_MISS': p.stats.fg3a--; break;
+              case 'FT_MADE':  p.stats.fta--;  p.stats.ftm--;  p.stats.pts -= 1; break;
+              case 'FT_MISS':  p.stats.fta--;  break;
+              case 'OREB':     p.stats.oreb--; break;
+              case 'DREB':     p.stats.dreb--; break;
+              case 'AST':      p.stats.ast--;  break;
+              case 'STL':      p.stats.stl--;  break;
+              case 'BLK':      p.stats.blk--;  break;
+              case 'TO':       p.stats.to--;   break;
+              case 'PF':       p.stats.pf--;   teamFouls.value--; break;
+            }
+          } else if (logItem.actionType === 'QUARTER') {
+            currentQuarter.value = logItem.meta.prevQ;
+          } else if (logItem.actionType === 'POSSESSION') {
+            possessionArrow.value = logItem.meta.prev;
+          }
+
+          // 2. 從 logs 陣列移除
+          const idx = logs.value.findIndex(l => l.id === logItem.id);
+          if (idx !== -1) {
+            logs.value.splice(idx, 1);
+          }
+
+          saveState();
+          showToast("已撤銷該筆特定事件");
+        }
+
+        // 新增球員到 Roster
+        function addNewPlayer() {
+          const num = newPlayerNumber.value.trim();
+          const name = newPlayerName.value.trim();
+          
+          if (!num || !name) return;
+
+          // 檢查背號或姓名是否重複
+          const duplicate = players.value.find(p => p.number === num);
+          if (duplicate) {
+            showToast(`已有名單背號為 #${num} 的球員，不可重複`);
+            return;
+          }
+
+          pushHistoryState();
+
+          const maxId = players.value.reduce((max, p) => p.id > max ? p.id : max, 0);
+          
+          // 預設第 1~5 位新增的為 isOnCourt = true，其餘為板凳
+          // 若目前場上已有 5 人，則預設為 isOnCourt = false
+          const shouldBeOnCourt = onCourtPlayers.value.length < 5;
+
+          players.value.push({
+            id: maxId + 1,
+            number: num,
+            name: name,
+            isOnCourt: shouldBeOnCourt,
+            playedSeconds: 0,
+            stats: createStatsObject()
+          });
+
+          newPlayerName.value = "";
+          newPlayerNumber.value = "";
+          
+          saveState();
+          showToast(`已新增球員 #${num} ${name}`);
+        }
+
+        // 移除球員
+        function removePlayer(player) {
+          // 檢查球員是否有任何數據累加，若有則提示警示
+          const hasStats = Object.values(player.stats).some(val => val > 0) || player.playedSeconds > 0;
+          if (hasStats) {
+            if (!confirm(`球員 #${player.number} ${player.name} 已有攻守紀錄，刪除將清空其數據，是否確定刪除？`)) {
+              return;
+            }
+          }
+
+          pushHistoryState();
+          
+          const idx = players.value.findIndex(p => p.id === player.id);
+          if (idx !== -1) {
+            players.value.splice(idx, 1);
+            if (selectedCourtPlayer.value?.id === player.id) {
+              selectedCourtPlayer.value = null;
+            }
+            saveState();
+            showToast(`已刪除球員 #${player.number}`);
+          }
+        }
+
+        // 觸發重設對話框
+        function confirmResetGame() {
+          playClickSound(220, 0.1);
+          showResetModal.value = true;
+        }
+
+        // 執行比賽清空
+        function resetGame() {
+          showResetModal.value = false;
+          
+          // 清空所有球員的攻守統計，但保留球員背號與名單、上場狀態
+          players.value.forEach(p => {
+            p.playedSeconds = 0;
+            p.stats = createStatsObject();
+          });
+          
+          remainingSeconds.value = 600;
+          currentQuarter.value = 1;
+          possessionArrow.value = "W";
+          teamFouls.value = 0;
+          logs.value = [];
+          history.value = [];
+          selectedCourtPlayer.value = null;
+          
+          if (isTimerRunning.value) {
+            isTimerRunning.value = false;
+            clearInterval(gameTimerInterval);
+          }
+          
+          saveState();
+          showToast("比賽數據已全數重設，球員名單已保留。");
+        }
+
+        // 顯示通知 Toast
+        function showToast(msg) {
+          toastMessage.value = msg;
+          setTimeout(() => {
+            if (toastMessage.value === msg) {
+              toastMessage.value = "";
+            }
+          }, 3500);
+        }
+
+        // 上場時間格式化 (分:秒)
+        function formatMinutes(sec) {
+          if (!sec) return "00:00";
+          const m = Math.floor(sec / 60).toString().padStart(2, '0');
+          const s = (sec % 60).toString().padStart(2, '0');
+          return `${m}:${s}`;
+        }
+
+        // 音效控制
+        function toggleSound() {
+          isSoundEnabled.value = !isSoundEnabled.value;
+          localStorage.setItem("sound_enabled", isSoundEnabled.value ? "1" : "0");
+        }
+
+        function playClickSound(freq = 440, duration = 0.05) {
+          if (!isSoundEnabled.value) return;
+          try {
+            if (!audioCtx) {
+              audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+              audioCtx.resume();
+            }
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.frequency.value = freq;
+            osc.type = 'sine';
+            
+            // 漸弱避免爆音
+            gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            
+            osc.start(audioCtx.currentTime);
+            osc.stop(audioCtx.currentTime + duration);
+          } catch (e) {
+            console.error("播放音效失敗", e);
+          }
+        }
+
+        // 複製文字報告 (LINE/FB 群組分享格式)
+        function copyTextReport() {
+          playClickSound(440, 0.05);
+          
+          let report = `🏀 【${teamName.value}】單隊攻守統計報告\n`;
+          report += `📅 紀錄日期: ${new Date().toLocaleDateString()}\n`;
+          report += `📊 團隊總分: ${teamTotalPoints.value} 分\n`;
+          report += `==================================\n`;
+          report += `背號 姓名   上場時間 得分 2P(投中/出手) 3P(投中/出手) FT(投中/出手) 助攻 籃板(進/防) 抄截 阻攻 失誤 犯規\n`;
+          
+          players.value.forEach(p => {
+            const namePadding = p.name.padEnd(5, ' ');
+            const numPadding = `#${p.number}`.padEnd(4, ' ');
+            const minStr = formatMinutes(p.playedSeconds);
+            const reb = p.stats.oreb + p.stats.dreb;
+            
+            report += `${numPadding} ${namePadding} ${minStr}  ${p.stats.pts}分  ${p.stats.fg2m}/${p.stats.fg2a}  ${p.stats.fg3m}/${p.stats.fg3a}  ${p.stats.ftm}/${p.stats.fta}  ${p.stats.ast}次  ${reb}個(${p.stats.oreb}/${p.stats.dreb})  ${p.stats.stl}  ${p.stats.blk}  ${p.stats.to}  ${p.stats.pf}\n`;
+          });
+          
+          report += `==================================\n`;
+          report += `📋 事件簡誌 (最近5筆):\n`;
+          logs.value.slice(0, 5).forEach(l => {
+            const pStr = l.playerNumber ? `#${l.playerNumber} ${l.playerName} ` : '';
+            report += `-[Q${l.quarter} ${l.timeStr}] ${pStr}${l.actionText}\n`;
+          });
+          
+          report += `\n* 產自【單隊籃球攻守紀錄系統 App】`;
+
+          navigator.clipboard.writeText(report).then(() => {
+            showToast("攻守文字報告已成功複製到剪貼簿！可直接貼至 LINE/FB！");
+          }).catch(err => {
+            console.error("複製失敗", err);
+            showToast("複製失敗，請手動選取複製");
+          });
+        }
+
+        // 下載 CSV 數據大表
+        function exportCSV() {
+          playClickSound(440, 0.05);
+          
+          // CSV 標頭
+          let csv = '\uFEFF'; // UTF-8 BOM 防止 Excel 中文亂碼
+          csv += '背號,姓名,上場時間,得分,2分球命中,2分球出手,3分球命中,3分球出手,罰球命中,罰球出手,進攻籃板,防守籃板,助攻,抄截,阻攻,失誤,犯規\n';
+          
+          players.value.forEach(p => {
+            csv += `"${p.number}","${p.name}","${formatMinutes(p.playedSeconds)}",${p.stats.pts},${p.stats.fg2m},${p.stats.fg2a},${p.stats.fg3m},${p.stats.fg3a},${p.stats.ftm},${p.stats.fta},${p.stats.oreb},${p.stats.dreb},${p.stats.ast},${p.stats.stl},${p.stats.blk},${p.stats.to},${p.stats.pf}\n`;
+          });
+
+          // 建立下載 Blob
+          const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+          const link = document.createElement("a");
+          const url = URL.createObjectURL(blob);
+          
+          link.setAttribute("href", url);
+          link.setAttribute("download", `${teamName.value}_攻守紀錄統計_${new Date().toISOString().slice(0,10)}.csv`);
+          link.style.visibility = 'hidden';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          showToast("CSV 檔案下載完成！");
+        }
+
+        // 生命週期與事件綁定
+        onMounted(() => {
+          loadState();
+          
+          // 讀取先前儲存的音效開關
+          const savedSound = localStorage.getItem("sound_enabled");
+          if (savedSound !== null) {
+            isSoundEnabled.value = savedSound === "1";
+          }
+          
+          // 監聽鍵盤快捷鍵以供快速暫停/播放時間 (對齊計時)
+          window.addEventListener("keydown", handleGlobalKeydown);
+        });
+
+        onUnmounted(() => {
+          if (gameTimerInterval) {
+            clearInterval(gameTimerInterval);
+          }
+          window.removeEventListener("keydown", handleGlobalKeydown);
+        });
+
+        function handleGlobalKeydown(e) {
+          // 空白鍵控制計時啟動/暫停 (若目前無 input 焦點)
+          if (e.code === "Space" && document.activeElement.tagName !== "INPUT") {
+            e.preventDefault();
+            toggleTimer();
+          }
+        }
+
+        return {
+          teamName, currentQuarter, quarters, possessionArrow, teamJerseyColor,
+          activeTab, remainingSeconds, isTimerRunning, isEditingTime, tempTimeInput, timeInputRef,
+          isSoundEnabled, showResetModal, toastMessage, players, selectedCourtPlayer,
+          teamFouls, logs, history, jerseyColors, newPlayerName, newPlayerNumber,
+          onCourtPlayers, benchPlayers, teamTotalPoints, formattedTime,
+          confirmTimeEdit, changeQuarter, togglePossession, changeJerseyColor, getJerseyHex,
+          selectCourtPlayer, clearCourtSelection, handleBenchPlayerClick, togglePlayerCourtStatus,
+          recordAction, undo, deleteSpecificLog, addNewPlayer, removePlayer,
+          confirmResetGame, resetGame, formatMinutes, toggleSound, copyTextReport, exportCSV, saveState
+        };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
