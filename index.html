@@ -2199,6 +2199,18 @@
           
           report += `==================================\n`;
           
+          // 暫停紀錄明細
+          const timeoutLogs = logs.value.filter(l => l.actionType === 'TIMEOUT');
+          report += `⏱️ 團隊暫停明細:\n`;
+          if (timeoutLogs.length === 0) {
+            report += `  (本場無暫停紀錄)\n`;
+          } else {
+            [...timeoutLogs].reverse().forEach((l, idx) => {
+              report += `  - [第 ${l.quarter} 節 ${l.timeStr}] 請求暫停 (第 ${idx + 1} 次)\n`;
+            });
+          }
+          report += `==================================\n`;
+
           // 如果不是總表，事件簡誌也只顯示該小節的事件
           let displayLogs = logs.value;
           if (boxscoreQuarterTab.value !== 'total') {
