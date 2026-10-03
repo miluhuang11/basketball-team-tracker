@@ -59,6 +59,14 @@
     input[type=number] {
       -moz-appearance: textfield;
     }
+    /* Toast 進場動畫 */
+    @keyframes slide-in {
+      from { transform: translateY(12px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .animate-slide-in {
+      animation: slide-in 0.2s ease-out;
+    }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans min-h-screen select-none overflow-x-hidden">
@@ -145,7 +153,7 @@
           <div v-if="possessionArrow === 'none'" class="flex items-center space-x-1">
             <button 
               @click="setPossession('W')" 
-              class="bg-indigo-650 hover:bg-indigo-550 border border-indigo-700/50 px-2 py-0.5 rounded text-[10px] text-white font-bold transition shadow-sm"
+              class="bg-indigo-600 hover:bg-indigo-500 border border-indigo-700/50 px-2 py-0.5 rounded text-[10px] text-white font-bold transition shadow-sm"
             >
               淺色 (W)
             </button>
@@ -170,7 +178,7 @@
             >
               {{ possessionArrow === 'W' ? '◄ 淺色 (W)' : '► 深色 (B)' }}
             </span>
-            <i class="fa-solid fa-arrows-rotate text-[10px] text-slate-500 hover:text-slate-355 ml-0.5"></i>
+            <i class="fa-solid fa-arrows-rotate text-[10px] text-slate-500 hover:text-slate-300 ml-0.5"></i>
           </button>
         </div>
 
@@ -349,7 +357,7 @@
               <button 
                 @click="recordAction('AST')" 
                 :disabled="!selectedCourtPlayer"
-                class="bg-indigo-700/90 hover:bg-indigo-650 text-white font-bold p-2 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-indigo-700/90 shadow-sm"
+                class="bg-indigo-700/90 hover:bg-indigo-600 text-white font-bold p-2 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-indigo-700/90 shadow-sm"
               >
                 <i class="fa-solid fa-handshake-angle text-indigo-400 text-base mb-0.5"></i>
                 <span class="text-sm">助攻 (AST)</span>
@@ -367,7 +375,7 @@
               <button 
                 @click="recordAction('BLK')" 
                 :disabled="!selectedCourtPlayer"
-                class="bg-violet-700/90 hover:bg-violet-650 text-white font-bold p-2 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-violet-700/90 shadow-sm"
+                class="bg-violet-700/90 hover:bg-violet-600 text-white font-bold p-2 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-violet-700/90 shadow-sm"
               >
                 <i class="fa-solid fa-hand text-violet-400 text-base mb-0.5"></i>
                 <span class="text-sm">阻攻 (BLK)</span>
@@ -387,7 +395,7 @@
                 <button 
                   @click="showFoulSelector = true" 
                   :disabled="!selectedCourtPlayer"
-                  class="bg-orange-800/80 hover:bg-orange-700 text-orange-100 border border-orange-850 font-bold rounded-xl transition flex flex-col items-center justify-center text-xs disabled:opacity-30 py-1"
+                  class="bg-orange-800/80 hover:bg-orange-700 text-orange-100 border border-orange-800 font-bold rounded-xl transition flex flex-col items-center justify-center text-xs disabled:opacity-30 py-1"
                 >
                   <i class="fa-solid fa-gavel text-orange-400 text-[10px] mb-0.5"></i>
                   <span>犯規 (PF)</span>
@@ -543,7 +551,7 @@
             <div v-show="activeTab === 'boxscore'" class="space-y-3 h-full flex flex-col justify-between">
               
               <!-- 節數與總表子選單切換 -->
-              <div class="flex items-center bg-slate-950/85 p-1 rounded-xl border border-slate-850 shrink-0 select-none gap-2">
+              <div class="flex items-center bg-slate-950/85 p-1 rounded-xl border border-slate-800 shrink-0 select-none gap-2">
                 <div class="flex flex-1 items-center bg-slate-900 p-0.5 rounded-lg border border-slate-800">
                   <button 
                     v-for="tab in boxscoreTabs" 
@@ -595,14 +603,14 @@
                       <!-- 背號姓名 -->
                       <td class="p-3 font-sans border-r border-slate-800/40">
                         <div class="flex items-center space-x-2">
-                          <span class="bg-slate-950 px-1.5 py-0.5 rounded text-[10px] font-bold font-mono border border-slate-850 text-indigo-400">#{{ p.number }}</span>
+                          <span class="bg-slate-950 px-1.5 py-0.5 rounded text-[10px] font-bold font-mono border border-slate-800 text-indigo-400">#{{ p.number }}</span>
                           <span class="text-slate-200 font-bold truncate max-w-[65px]" :class="p.isOnCourt ? 'text-indigo-300' : ''">{{ p.name }}</span>
                           <span v-if="p.isOnCourt" class="text-[8px] bg-indigo-500/20 text-indigo-300 px-1 rounded font-bold scale-90">場上</span>
                         </div>
                       </td>
                       
                       <!-- 時間 -->
-                      <td class="p-3 text-center font-mono border-r border-slate-800/40" :class="getDisplaySeconds(p) === 0 ? 'text-slate-600' : 'text-slate-350'">
+                      <td class="p-3 text-center font-mono border-r border-slate-800/40" :class="getDisplaySeconds(p) === 0 ? 'text-slate-600' : 'text-slate-300'">
                         {{ formatMinutes(getDisplaySeconds(p)) }}
                       </td>
                       
@@ -614,7 +622,7 @@
                           </span>
                           <!-- 得分 breakdown -->
                           <span v-if="boxscoreQuarterTab === 'total' && getDisplayStats(p).pts > 0" class="text-[8px] scale-90 text-slate-500 font-semibold mt-0.5 flex items-center gap-0.5 select-none">
-                            <span class="text-sky-400">{{ p.statsByQuarter?.[1]?.pts ?? 0 }}</span>·<span class="text-rose-500">{{ p.statsByQuarter?.[2]?.pts ?? 0 }}</span>·<span class="text-emerald-400">{{ p.statsByQuarter?.[3]?.pts ?? 0 }}</span>·<span class="text-slate-350">{{ p.statsByQuarter?.[4]?.pts ?? 0 }}</span>
+                            <span class="text-sky-400">{{ p.statsByQuarter?.[1]?.pts ?? 0 }}</span>·<span class="text-rose-500">{{ p.statsByQuarter?.[2]?.pts ?? 0 }}</span>·<span class="text-emerald-400">{{ p.statsByQuarter?.[3]?.pts ?? 0 }}</span>·<span class="text-slate-300">{{ p.statsByQuarter?.[4]?.pts ?? 0 }}</span>
                             <span v-if="p.statsByQuarter?.['OT']?.pts > 0" class="text-amber-500">·{{ p.statsByQuarter?.['OT']?.pts }}</span>
                           </span>
                         </div>
@@ -658,14 +666,14 @@
                             <span class="text-slate-800">|</span>
                             <span :class="getDisplayStats(p).blk === 0 ? 'text-slate-600' : 'text-violet-400 font-bold'">B:{{ getDisplayStats(p).blk }}</span>
                             <span class="text-slate-800">|</span>
-                            <span :class="getDisplayStats(p).to === 0 ? 'text-slate-600' : 'text-rose-450 font-bold'">T:{{ getDisplayStats(p).to }}</span>
+                            <span :class="getDisplayStats(p).to === 0 ? 'text-slate-600' : 'text-rose-400 font-bold'">T:{{ getDisplayStats(p).to }}</span>
                           </div>
                           <div class="mt-1 font-mono">
-                            <span class="font-bold" :class="getDisplayStats(p).pf >= 4 ? 'text-rose-500 font-black animate-pulse text-xs' : (getDisplayStats(p).pf === 0 && boxscoreQuarterTab === 'total' ? 'text-slate-600 font-normal' : 'text-slate-350')">
+                            <span class="font-bold" :class="getDisplayStats(p).pf >= 4 ? 'text-rose-500 font-black animate-pulse text-xs' : (getDisplayStats(p).pf === 0 && boxscoreQuarterTab === 'total' ? 'text-slate-600 font-normal' : 'text-slate-300')">
                               F:{{ boxscoreQuarterTab === 'total' ? getDisplayStats(p).pf : displayQuarterFouls(p, boxscoreQuarterTab) }}
                             </span>
                             <span v-if="boxscoreQuarterTab === 'total' && getDisplayStats(p).pf > 0" class="text-[8px] scale-90 text-slate-500 ml-1 font-semibold block mt-0.5 select-none">
-                              (<span class="text-sky-400">{{ formatQuarterFouls(p, 1) }}</span>·<span class="text-rose-500">{{ formatQuarterFouls(p, 2) }}</span>·<span class="text-emerald-400">{{ formatQuarterFouls(p, 3) }}</span>·<span class="text-slate-355">{{ formatQuarterFouls(p, 4) }}</span><span v-if="formatQuarterFouls(p, 'OT') !== '-'" class="text-amber-500">·{{ formatQuarterFouls(p, 'OT') }}</span>)
+                              (<span class="text-sky-400">{{ formatQuarterFouls(p, 1) }}</span>·<span class="text-rose-500">{{ formatQuarterFouls(p, 2) }}</span>·<span class="text-emerald-400">{{ formatQuarterFouls(p, 3) }}</span>·<span class="text-slate-300">{{ formatQuarterFouls(p, 4) }}</span><span v-if="formatQuarterFouls(p, 'OT') !== '-'" class="text-amber-500">·{{ formatQuarterFouls(p, 'OT') }}</span>)
                             </span>
                           </div>
                         </div>
@@ -730,7 +738,7 @@
                 <button 
                   type="button"
                   @click="confirmRestoreDefaultRoster" 
-                  class="bg-slate-850 hover:bg-rose-950/40 border border-slate-800 hover:border-rose-900/50 text-slate-300 hover:text-rose-300 text-[9px] font-bold px-2 py-1 rounded transition flex items-center gap-1"
+                  class="bg-slate-800 hover:bg-rose-950/40 border border-slate-800 hover:border-rose-900/50 text-slate-300 hover:text-rose-300 text-[9px] font-bold px-2 py-1 rounded transition flex items-center gap-1"
                 >
                   <i class="fa-solid fa-rotate-left text-[8px]"></i> 還原東吳預設名單
                 </button>
@@ -885,13 +893,13 @@
                     <div 
                       v-for="game in supabaseGamesList" 
                       :key="game.id"
-                      :class="currentGameCloudId === game.id ? 'border-indigo-500/80 bg-indigo-950/20' : 'border-slate-800 hover:border-slate-700 bg-slate-850/20'"
+                      :class="currentGameCloudId === game.id ? 'border-indigo-500/80 bg-indigo-950/20' : 'border-slate-800 hover:border-slate-700 bg-slate-800/20'"
                       class="border rounded-xl p-2 flex items-center justify-between transition"
                     >
                       <div class="text-left flex-1 min-w-0 pr-2">
                         <div class="flex items-center space-x-1">
                           <span class="text-[10px] font-bold text-slate-200 truncate block max-w-[90px]">{{ game.team_name }}</span>
-                          <span class="text-[8px] bg-slate-850 text-slate-400 px-1 rounded scale-90">{{ game.quarter }}</span>
+                          <span class="text-[8px] bg-slate-800 text-slate-400 px-1 rounded scale-90">{{ game.quarter }}</span>
                         </div>
                         <span class="text-[8px] text-slate-500 font-mono block mt-0.5">{{ game.game_date }} | {{ game.score }} 分</span>
                       </div>
@@ -971,7 +979,7 @@
         </p>
 
         <!-- 安全勾選確認 -->
-        <label class="flex items-center gap-2 mb-6 cursor-pointer select-none text-xs text-slate-400 hover:text-slate-200 bg-slate-950/40 p-2.5 rounded-lg border border-slate-850">
+        <label class="flex items-center gap-2 mb-6 cursor-pointer select-none text-xs text-slate-400 hover:text-slate-200 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800">
           <input 
             type="checkbox" 
             v-model="confirmSavedBeforeReset" 
@@ -995,12 +1003,13 @@
       </div>
     </div>
 
-    <!-- 錯誤提示 Toast -->
-    <div 
-      v-if="toastMessage" 
-      class="fixed bottom-6 right-6 bg-rose-600 text-white font-bold px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 z-50 animate-slide-in"
+    <!-- 提示 Toast（錯誤為紅色，一般通知為深灰） -->
+    <div
+      v-if="toastMessage"
+      :class="toastType === 'error' ? 'bg-rose-600' : 'bg-slate-700 border border-slate-600'"
+      class="fixed bottom-6 right-6 text-white font-bold px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 z-50 animate-slide-in"
     >
-      <i class="fa-solid fa-circle-xmark"></i>
+      <i :class="toastType === 'error' ? 'fa-solid fa-circle-xmark' : 'fa-solid fa-circle-check text-emerald-400'"></i>
       <span class="text-sm">{{ toastMessage }}</span>
     </div>
 
@@ -1032,6 +1041,7 @@
         const tempTimeInput = ref("");
         const timeInputRef = ref(null);
         let gameTimerInterval = null;
+        let lastTickAt = 0; // 上一次計時刻度的時間戳 (ms)
 
         // 音效相關
         const isSoundEnabled = ref(true);
@@ -1040,6 +1050,7 @@
         // 提示與對話視窗
         const showResetModal = ref(false);
         const toastMessage = ref("");
+        const toastType = ref("info"); // 'info' | 'error'
 
         // 預設球員陣容
         const defaultPlayers = [
@@ -1080,9 +1091,9 @@
           { value: 1, label: "第一節 (Q1)", colorClass: "border-sky-500 text-sky-400 hover:bg-sky-500/10", activeClass: "bg-sky-500 text-white font-bold" },
           { value: 2, label: "第二節 (Q2)", colorClass: "border-rose-500 text-rose-400 hover:bg-rose-500/10", activeClass: "bg-rose-500 text-white font-bold" },
           { value: 3, label: "第三節 (Q3)", colorClass: "border-emerald-500 text-emerald-400 hover:bg-emerald-500/10", activeClass: "bg-emerald-500 text-white font-bold" },
-          { value: 4, label: "第四節 (Q4)", colorClass: "border-slate-500 text-slate-350 hover:bg-slate-500/10", activeClass: "bg-slate-300 text-slate-950 font-bold" },
+          { value: 4, label: "第四節 (Q4)", colorClass: "border-slate-500 text-slate-300 hover:bg-slate-500/10", activeClass: "bg-slate-300 text-slate-950 font-bold" },
           { value: "OT", label: "延長賽 (OT)", colorClass: "border-amber-500 text-amber-400 hover:bg-amber-500/10", activeClass: "bg-amber-500 text-slate-950 font-bold" },
-          { value: "total", label: "總表", colorClass: "border-indigo-500 text-indigo-400 hover:bg-indigo-500/10", activeClass: "bg-indigo-650 text-white font-bold" }
+          { value: "total", label: "總表", colorClass: "border-indigo-500 text-indigo-400 hover:bg-indigo-500/10", activeClass: "bg-indigo-600 text-white font-bold" }
         ];
 
         // Supabase 雲端儲存相關 state
@@ -1291,29 +1302,41 @@
           playClickSound(523.25, 0.08); // C5
           isTimerRunning.value = !isTimerRunning.value;
           if (isTimerRunning.value) {
+            // 以實際經過的時間計算，而不是每次固定扣 1 秒：
+            // 分頁切到背景或螢幕鎖定時瀏覽器會延遲 setInterval，固定扣 1 秒會讓時鐘越走越慢
+            lastTickAt = Date.now();
             gameTimerInterval = setInterval(() => {
-              if (remainingSeconds.value > 0) {
-                remainingSeconds.value--;
+              const elapsed = Math.floor((Date.now() - lastTickAt) / 1000);
+              if (elapsed < 1) return;
+              lastTickAt += elapsed * 1000;
+
+              const step = Math.min(elapsed, remainingSeconds.value);
+              if (step > 0) {
+                const before = remainingSeconds.value;
+                remainingSeconds.value -= step;
                 // 自動幫場上 5 人增加分節與總上場時間 (秒)
                 players.value.forEach(p => {
                   if (p.isOnCourt) {
                     const q = currentQuarter.value;
                     if (!p.playedSecondsByQuarter) p.playedSecondsByQuarter = createQuarterSeconds();
-                    p.playedSecondsByQuarter[q] = (p.playedSecondsByQuarter[q] || 0) + 1;
+                    p.playedSecondsByQuarter[q] = (p.playedSecondsByQuarter[q] || 0) + step;
                     updatePlayerTotals(p);
                   }
                 });
-                // 每隔幾秒存一次 state，不要太頻繁以優化效能
-                if (remainingSeconds.value % 5 === 0) {
+                // 每跨過一個 5 秒刻度存一次 state，不要太頻繁以優化效能
+                if (Math.floor(before / 5) !== Math.floor(remainingSeconds.value / 5)) {
                   saveState();
                 }
-              } else {
+              }
+
+              if (remainingSeconds.value === 0) {
                 isTimerRunning.value = false;
                 clearInterval(gameTimerInterval);
+                saveState();
                 playClickSound(330, 0.5); // 音效提示結束
                 showToast("本節時間結束！");
               }
-            }, 1000);
+            }, 250);
           } else {
             if (gameTimerInterval) {
               clearInterval(gameTimerInterval);
@@ -1356,7 +1379,7 @@
               return;
             }
           }
-          showToast("時間格式錯誤，請使用 分鐘:秒數 格式，例如 10:00");
+          showToast("時間格式錯誤，請使用 分鐘:秒數 格式，例如 10:00", 'error');
         }
 
         // 節數切換
@@ -1471,7 +1494,7 @@
         // 記錄暫停
         function recordTimeout() {
           if (teamTimeouts.value >= maxTimeouts.value) {
-            showToast("本階段的暫停次數已用盡！");
+            showToast("本階段的暫停次數已用盡！", 'error');
             return;
           }
           
@@ -1531,7 +1554,7 @@
 
         async function testSupabaseConnection(silent = false) {
           if (!supabaseUrl.value || !supabaseKey.value) {
-            if (!silent) showToast("請輸入完整的 URL 與 Anon Key！");
+            if (!silent) showToast("請輸入完整的 URL 與 Anon Key！", 'error');
             return;
           }
           try {
@@ -1556,7 +1579,7 @@
             supabaseClientInstance = null;
             if (!silent) {
               console.error(e);
-              showToast("連線失敗，請檢查網址/金鑰及資料表 `game_records` 是否已建立！");
+              showToast("連線失敗，請檢查網址/金鑰及資料表 `game_records` 是否已建立！", 'error');
             }
           }
         }
@@ -1577,7 +1600,7 @@
         async function saveToSupabase(silent = false) {
           const client = getSupabaseClient();
           if (!client || !isSupabaseConnected.value) {
-            if (!silent) showToast("雲端資料庫未連線，無法上傳");
+            if (!silent) showToast("雲端資料庫未連線，無法上傳", 'error');
             return;
           }
           
@@ -1620,7 +1643,7 @@
             fetchCloudGames(true);
           } catch (e) {
             console.error(e);
-            if (!silent) showToast("上傳失敗，請檢查 Supabase 表格設定");
+            if (!silent) showToast("上傳失敗，請檢查 Supabase 表格設定", 'error');
           } finally {
             isSupabaseSyncing.value = false;
           }
@@ -1686,7 +1709,7 @@
             }
           } catch (e) {
             console.error(e);
-            showToast("載入雲端紀錄失敗");
+            showToast("載入雲端紀錄失敗", 'error');
           }
         }
 
@@ -1715,7 +1738,7 @@
             showToast("雲端比賽紀錄已刪除");
           } catch (e) {
             console.error(e);
-            showToast("刪除雲端紀錄失敗");
+            showToast("刪除雲端紀錄失敗", 'error');
           }
         }
 
@@ -1748,7 +1771,7 @@
             swapPlayers(selectedCourtPlayer.value, benchPlayer);
           } else {
             // 提示需先選取場上球員
-            showToast(`請先點選上方場上 5 人之一，再點選 #${benchPlayer.number} 以完成換人`);
+            showToast(`請先點選上方場上 5 人之一，再點選 #${benchPlayer.number} 以完成換人`, 'error');
           }
         }
 
@@ -1787,19 +1810,20 @@
 
         // 手動在名單調整上場/板凳狀態 (需維持 5 人)
         function togglePlayerCourtStatus(player) {
-          pushHistoryState();
           const target = players.value.find(p => p.id === player.id);
           if (!target) return;
 
           if (target.isOnCourt) {
             // 欲下場，需確認場上剩下至少 1 人？
+            pushHistoryState();
             target.isOnCourt = false;
           } else {
             // 欲上場，檢查是否已滿 5 人
             if (onCourtPlayers.value.length >= 5) {
-              showToast("場上已有 5 人，若要換人請點卡片或在左側操作對調。");
+              showToast("場上已有 5 人，若要換人請點卡片或在左側操作對調。", 'error');
               return;
             }
+            pushHistoryState();
             target.isOnCourt = true;
           }
           saveState();
@@ -1808,7 +1832,7 @@
         // 記錄攻守動作 (Mode B)
         function recordAction(actionType) {
           if (!selectedCourtPlayer.value) {
-            showToast("請先點選一位場上球員再登錄數據");
+            showToast("請先點選一位場上球員再登錄數據", 'error');
             return;
           }
           
@@ -1900,7 +1924,7 @@
               color = '#fb923c'; // 橘色
               // 達加罰警告
               if (teamFouls.value >= 4) {
-                showToast("團隊犯規已達 4 次！下次起將進入加罰狀態！");
+                showToast("團隊犯規已達 4 次！下次起將進入加罰狀態！", 'error');
               }
               break;
           }
@@ -1950,11 +1974,27 @@
           playClickSound(220, 0.15); // 低音 A3
           
           const prevState = history.value.shift();
-          
+
+          // 比賽時鐘與上場時間是真實流逝的時間，不屬於被撤銷的動作。
+          // 還原快照時保留目前的值，否則 Undo 會把時鐘倒轉回動作發生的當下。
+          const playedNow = {};
+          players.value.forEach(p => {
+            playedNow[p.id] = { total: p.playedSeconds || 0, byQuarter: p.playedSecondsByQuarter };
+          });
+          const quarterChanged = String(prevState.currentQuarter) !== String(currentQuarter.value);
+
           currentQuarter.value = prevState.currentQuarter;
           possessionArrow.value = prevState.possessionArrow;
-          remainingSeconds.value = prevState.remainingSeconds;
+          // 只有撤銷「換節」時才還原時鐘（換節會把時間重設為 10:00 / 5:00）
+          if (quarterChanged) remainingSeconds.value = prevState.remainingSeconds;
           players.value = prevState.players;
+          players.value.forEach(p => {
+            const now = playedNow[p.id];
+            if (now && now.byQuarter && now.total >= (p.playedSeconds || 0)) {
+              p.playedSecondsByQuarter = now.byQuarter;
+              updatePlayerTotals(p);
+            }
+          });
           teamFouls.value = prevState.teamFouls;
           teamTimeouts.value = prevState.teamTimeouts || 0;
           logs.value = prevState.logs;
@@ -2056,7 +2096,7 @@
           // 檢查背號或姓名是否重複
           const duplicate = players.value.find(p => p.number === num);
           if (duplicate) {
-            showToast(`已有名單背號為 #${num} 的球員，不可重複`);
+            showToast(`已有名單背號為 #${num} 的球員，不可重複`, 'error');
             return;
           }
 
@@ -2168,8 +2208,9 @@
         }
 
         // 顯示通知 Toast
-        function showToast(msg) {
+        function showToast(msg, type = 'info') {
           toastMessage.value = msg;
+          toastType.value = type;
           setTimeout(() => {
             if (toastMessage.value === msg) {
               toastMessage.value = "";
@@ -2280,7 +2321,7 @@
             showToast(`已成功複製【${tabLabel}】報告！可直接貼至 LINE/FB！`);
           }).catch(err => {
             console.error("複製失敗", err);
-            showToast("複製失敗，請手動選取複製");
+            showToast("複製失敗，請手動選取複製", 'error');
           });
         }
 
@@ -2383,7 +2424,7 @@
           showFoulSelector.value = false;
 
           if (teamFouls.value >= 4) {
-            showToast("團隊犯規已達 4 次！下次起將進入加罰狀態！");
+            showToast("團隊犯規已達 4 次！下次起將進入加罰狀態！", 'error');
           }
 
           saveState();
@@ -2443,7 +2484,7 @@
         return {
           teamName, currentQuarter, quarters, possessionArrow, teamJerseyColor,
           activeTab, remainingSeconds, isTimerRunning, isEditingTime, tempTimeInput, timeInputRef,
-          isSoundEnabled, showResetModal, toastMessage, players, selectedCourtPlayer,
+          isSoundEnabled, showResetModal, toastMessage, toastType, players, selectedCourtPlayer,
           teamFouls, logs, history, jerseyColors, newPlayerName, newPlayerNumber,
           onCourtPlayers, benchPlayers, teamTotalPoints, formattedTime,
           confirmTimeEdit, changeQuarter, togglePossession, setPossession,
