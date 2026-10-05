@@ -913,7 +913,7 @@
                 </div>
               </div>
               <p class="text-[11px] text-slate-500 leading-normal">
-                * 歷史比賽只存在這台裝置的瀏覽器裡，換裝置或清除瀏覽資料就會消失，建議定期下載賽季 Excel 備份。
+                * 歷史比賽只存在這台裝置的瀏覽器裡，換裝置或清除瀏覽資料就會消失。建議定期點左上角隊名，按 <i class="fa-solid fa-download"></i> 匯出備份檔。
               </p>
             </div>
 
@@ -1195,15 +1195,24 @@
             <button v-else @click="switchTeam(t.id)" class="bg-slate-800 hover:bg-indigo-600 text-slate-200 hover:text-white text-xs font-bold px-3 py-2 rounded-lg transition shrink-0">
               切換
             </button>
+            <button @click="exportTeamBackup(t)" class="text-slate-400 hover:text-emerald-300 hover:bg-slate-800 w-10 h-10 flex items-center justify-center rounded-lg transition shrink-0" title="匯出備份檔">
+              <i class="fa-solid fa-download text-sm"></i>
+            </button>
             <button @click="deleteTeam(t)" class="text-slate-500 hover:text-rose-400 hover:bg-slate-800 w-10 h-10 flex items-center justify-center rounded-lg transition shrink-0" title="刪除隊伍">
               <i class="fa-solid fa-trash-can text-sm"></i>
             </button>
           </div>
-          <button @click="startCreatingTeam" class="w-full border border-dashed border-slate-700 hover:border-indigo-500 text-slate-300 hover:text-white py-3 rounded-xl font-bold transition text-sm flex items-center justify-center gap-2">
-            <i class="fa-solid fa-plus"></i> 新增隊伍
-          </button>
+          <div class="flex gap-2">
+            <button @click="startCreatingTeam" class="flex-1 border border-dashed border-slate-700 hover:border-indigo-500 text-slate-300 hover:text-white py-3 rounded-xl font-bold transition text-sm flex items-center justify-center gap-2">
+              <i class="fa-solid fa-plus"></i> 新增隊伍
+            </button>
+            <button @click="backupFileInput.click()" class="flex-1 border border-dashed border-slate-700 hover:border-emerald-500 text-slate-300 hover:text-white py-3 rounded-xl font-bold transition text-sm flex items-center justify-center gap-2">
+              <i class="fa-solid fa-upload"></i> 匯入備份檔
+            </button>
+          </div>
           <p class="text-[11px] text-slate-500 leading-normal pt-1">
-            * 每支隊伍有各自的名單、進行中的比賽和歷史比賽，切換時互不影響。
+            * 每支隊伍有各自的名單、進行中的比賽和歷史比賽，切換時互不影響。<br>
+            * 要換裝置或備份時，按隊伍旁的 <i class="fa-solid fa-download"></i> 匯出備份檔，再到另一台裝置按「匯入備份檔」。
           </p>
         </div>
 
@@ -1233,7 +1242,13 @@
               建立隊伍
             </button>
           </div>
+          <button type="button" @click="backupFileInput.click()" class="w-full text-xs text-slate-400 hover:text-emerald-300 py-2 transition">
+            <i class="fa-solid fa-upload mr-1"></i> 已經在別台裝置用過？匯入備份檔
+          </button>
         </form>
+
+        <!-- 匯入備份檔用的隱藏檔案選擇器 (由上面的按鈕觸發) -->
+        <input type="file" ref="backupFileInput" accept=".json,application/json" class="hidden" @change="importTeamBackup">
       </div>
     </div>
 
@@ -1290,6 +1305,7 @@
         const teamForm = ref({ name: "", rosterText: "" });
         const showRosterPaste = ref(false);
         const rosterPasteText = ref("");
+        const backupFileInput = ref(null);
         let lastRosterSignature = "";
 
         // 本場比賽資訊
@@ -1771,6 +1787,104 @@
           saveTeams();
           showToast(`已刪除「${team.name}」`);
           if (teams.value.length === 0) startCreatingTeam();
+        }
+
+        // ---------- 備份檔：把一支隊伍的名單、進行中的比賽與歷史比賽存成一個檔案，可以在另一台裝置匯入 ----------
+        const BACKUP_FORMAT = "basketball-team-tracker-backup";
+
+        async function exportTeamBackup(team) {
+          try {
+            // 目前隊伍先存一次檔，確保備份裡是最新的進度
+            if (team.id === currentTeamId.value) saveState();
+            const games = await loadGameRecords(team.id);
+            let liveGame = null;
+            try {
+              liveGame = JSON.parse(localStorage.getItem(stateKeyFor(team.id)) || "null");
+            } catch (e) {
+              console.error("讀取進行中的比賽失敗，備份檔不含這部分", e);
+            }
+            // Undo 歷史和雲端比賽 id 只對原本那台裝置有意義，不放進備份
+            if (liveGame) {
+              delete liveGame.history;
+              liveGame.cloudGameId = null;
+            }
+            const backup = {
+              format: BACKUP_FORMAT,
+              version: 1,
+              exportedAt: new Date().toISOString(),
+              team: JSON.parse(JSON.stringify(team)),
+              liveGame,
+              games
+            };
+            downloadBlob(new Blob([JSON.stringify(backup)], { type: "application/json" }), `${team.name}_備份_${todayString()}.json`);
+            showToast(`已匯出「${team.name}」的備份檔 (含 ${games.length} 場歷史比賽)`);
+          } catch (e) {
+            console.error("匯出備份檔失敗", e);
+            showToast("匯出備份檔失敗，請再試一次", 'error');
+          }
+        }
+
+        async function importTeamBackup(event) {
+          const file = event.target.files?.[0];
+          event.target.value = ""; // 清掉選取，之後才能再選同一個檔案
+          if (!file) return;
+
+          let backup;
+          try {
+            backup = JSON.parse(await file.text());
+          } catch (e) {
+            showToast("讀不懂這個檔案，請確認選的是本系統匯出的備份檔 (.json)", 'error');
+            return;
+          }
+          if (backup?.format !== BACKUP_FORMAT || !backup.team?.id || !Array.isArray(backup.team.roster) || !Array.isArray(backup.games)) {
+            showToast("這不是本系統的備份檔，無法匯入", 'error');
+            return;
+          }
+          // 只收結構完整的比賽，並補齊舊版可能缺少的欄位
+          const games = backup.games.filter(g => g && g.id && Array.isArray(g.players) && Array.isArray(g.logs));
+          games.forEach(g => g.players.forEach(normalizePlayer));
+
+          try {
+            const existing = teams.value.find(t => t.id === backup.team.id);
+            if (existing) {
+              // 這台裝置已有同一支隊伍：只合併歷史比賽，不動這裡的名單與進行中的比賽，以免蓋掉正在記錄的內容
+              if (!confirm(`這台裝置已經有「${existing.name}」。\n要把備份檔裡的 ${games.length} 場歷史比賽合併進來嗎？\n\n同一場比賽會以較新的版本為準；這台裝置上的名單和進行中的比賽不會變動。`)) {
+                return;
+              }
+              const localById = new Map((await loadGameRecords(existing.id)).map(g => [g.id, g]));
+              let added = 0;
+              let updated = 0;
+              for (const g of games) {
+                const mine = localById.get(g.id);
+                if (mine && (g.savedAt || 0) <= (mine.savedAt || 0)) continue;
+                await saveGameRecord({ ...g, teamId: existing.id });
+                if (mine) updated++; else added++;
+              }
+              if (existing.id === currentTeamId.value) await refreshHistory();
+              showToast(`合併完成：新增 ${added} 場、更新 ${updated} 場歷史比賽`);
+              return;
+            }
+
+            // 這台裝置沒有這支隊伍：整支還原 (名單、進行中的比賽、歷史比賽)
+            const team = {
+              id: backup.team.id,
+              name: String(backup.team.name || "匯入的球隊"),
+              roster: backup.team.roster.map(r => ({ id: r.id, number: String(r.number), name: String(r.name), starter: !!r.starter }))
+            };
+            for (const g of games) {
+              await saveGameRecord({ ...g, teamId: team.id });
+            }
+            if (backup.liveGame) {
+              localStorage.setItem(stateKeyFor(team.id), JSON.stringify({ ...backup.liveGame, history: [], cloudGameId: null }));
+            }
+            teams.value.push(team);
+            isCreatingTeam.value = false;
+            switchTeam(team.id);
+            showToast(`已匯入「${team.name}」：${team.roster.length} 位球員、${games.length} 場歷史比賽`);
+          } catch (e) {
+            console.error("匯入備份檔失敗", e);
+            showToast("匯入備份檔失敗，請再試一次", 'error');
+          }
         }
 
         // ---------- 歷史比賽 (存在 IndexedDB：瀏覽器內建的資料庫，容量比 localStorage 大得多) ----------
@@ -3538,6 +3652,7 @@
         return {
           teams, currentTeamId, showTeamModal, isCreatingTeam, teamForm, showRosterPaste, rosterPasteText,
           openTeamModal, startCreatingTeam, createTeam, switchTeam, renameTeam, deleteTeam, addPlayersFromText,
+          backupFileInput, exportTeamBackup, importTeamBackup,
           gameDate, opponentName, opponentScore, recordOpponentScore, setOpponentFinalScore,
           historyGames, seasonRecord, gameResult, exportSeasonExcel,
           teamName, currentQuarter, quarters, possessionArrow,
