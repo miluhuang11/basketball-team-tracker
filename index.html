@@ -87,16 +87,15 @@
       
       <!-- 隊名與節數 -->
       <div class="contents sm:flex sm:items-center sm:gap-3">
-        <div class="flex-1 min-w-0 sm:flex-none flex items-center space-x-2 bg-indigo-950/20 px-2.5 py-1 rounded-xl border border-indigo-900/30">
-          <i class="fa-solid fa-shield-halved text-indigo-400 text-base animate-pulse"></i>
-          <input 
-            type="text" 
-            v-model="teamName" 
-            @change="saveState" 
-            class="bg-transparent border-b border-transparent hover:border-slate-700 focus:border-indigo-500 focus:outline-none font-black text-base text-slate-100 w-full min-w-0 sm:w-44 py-1.5 transition"
-            title="點擊修改隊名"
-          />
-        </div>
+        <button 
+          @click="openTeamModal" 
+          class="flex-1 min-w-0 sm:flex-none flex items-center gap-2 bg-indigo-950/20 hover:bg-indigo-950/50 px-3 h-11 rounded-xl border border-indigo-900/30 transition"
+          title="切換或管理隊伍"
+        >
+          <i class="fa-solid fa-shield-halved text-indigo-400 text-base"></i>
+          <span class="font-black text-base text-slate-100 truncate sm:max-w-[11rem]">{{ teamName || '建立隊伍' }}</span>
+          <i class="fa-solid fa-chevron-down text-xs text-slate-500"></i>
+        </button>
         
         <!-- 節數選擇器 -->
         <div class="flex items-center shrink-0 bg-slate-800/80 p-0.5 rounded-lg border border-slate-700">
@@ -211,13 +210,14 @@
           <span class="hidden sm:inline">Undo</span>
         </button>
 
-        <!-- 重設比賽 -->
+        <!-- 結束比賽 (存入歷史，或不存檔直接清空) -->
         <button 
-          @click="confirmResetGame" 
-          class="order-6 sm:order-none bg-slate-800 hover:bg-rose-950/40 border border-slate-700 hover:border-rose-900/60 text-slate-400 hover:text-rose-400 w-11 h-11 rounded-xl flex items-center justify-center transition"
-          title="重設比賽數據"
+          @click="openFinishModal" 
+          class="order-6 sm:order-none bg-slate-800 hover:bg-emerald-950/50 border border-slate-700 hover:border-emerald-700 text-slate-300 hover:text-emerald-300 min-w-[44px] h-11 px-3 rounded-xl flex items-center justify-center gap-1.5 text-sm font-bold transition"
+          title="結束比賽"
         >
-          <i class="fa-solid fa-trash-can"></i>
+          <i class="fa-solid fa-flag-checkered"></i>
+          <span class="hidden sm:inline">結束</span>
         </button>
       </div>
     </header>
@@ -428,7 +428,7 @@
           <div class="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between gap-2 text-xs text-slate-400">
             <span class="flex items-center gap-1.5 text-slate-400">
               <i class="fa-solid fa-circle-info text-indigo-400"></i>
-              <span><strong>如何換人？</strong> 點選上方 [場上球員]，接著在 [板凳席] 分頁點選欲換上的球員即可。</span>
+              <span><strong>如何換人？</strong> 點選上方 [場上球員]，接著在 [板凳] 分頁點選欲換上的球員即可。</span>
             </span>
             <button 
               @click="clearCourtSelection" 
@@ -445,15 +445,42 @@
       <!-- 使用 lg:order-first 使其在排版上顯示於左邊，並將寬度調為 5 欄以給予數據大表更多橫向空間 -->
       <section :class="isBoxscoreMaximized ? 'lg:col-span-12' : 'lg:col-span-5 lg:order-first'" class="flex flex-col gap-3 sm:gap-4 min-h-0 lg:overflow-hidden">
         
-        <!-- 比分看板 -->
-        <div class="bg-slate-900/60 backdrop-blur-md rounded-2xl p-3 sm:p-4 border border-slate-800/80 shadow-md flex items-center justify-between shrink-0">
-          <div class="text-left">
-            <div class="text-xs text-slate-400 font-bold uppercase tracking-wider">團隊累計得分</div>
-            <div class="text-4xl font-mono font-black text-amber-400 select-all tracking-tight leading-none my-1">{{ teamTotalPoints }}</div>
-          </div>
-          
-          <div class="h-10 w-px bg-slate-800"></div>
+        <!-- 比分看板：上排是雙方比分，下排是團犯與暫停 -->
+        <div class="bg-slate-900/60 backdrop-blur-md rounded-2xl p-3 sm:p-4 border border-slate-800/80 shadow-md shrink-0">
+          <div class="flex items-center gap-2 sm:gap-3">
+            <div class="flex-1 min-w-0">
+              <div class="text-xs text-slate-400 font-bold truncate py-1">{{ teamName }}</div>
+              <div class="text-4xl font-mono font-black text-amber-400 select-all tracking-tight leading-none mt-1">{{ teamTotalPoints }}</div>
+            </div>
 
+            <div class="text-2xl font-black text-slate-600 self-end pb-1">:</div>
+
+            <!-- 對手：只記隊名與得分 -->
+            <div class="flex-1 min-w-0 text-right">
+              <input 
+                type="text" 
+                v-model="opponentName" 
+                @change="saveState" 
+                placeholder="輸入對手隊名" 
+                class="w-full min-w-0 bg-transparent text-right border-b border-slate-700 hover:border-slate-500 focus:border-indigo-500 focus:outline-none text-xs font-bold text-slate-300 placeholder:text-slate-600 placeholder:font-normal py-1"
+              />
+              <div class="text-4xl font-mono font-black text-slate-200 tracking-tight leading-none mt-1">{{ opponentScore }}</div>
+            </div>
+            <div class="grid grid-cols-2 gap-1 shrink-0">
+              <button 
+                v-for="pts in [1, 2, 3, -1]" 
+                :key="pts"
+                @click="recordOpponentScore(pts)" 
+                :class="pts < 0 ? 'text-rose-400' : 'text-slate-200'"
+                class="w-10 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-mono font-bold transition"
+                :title="pts < 0 ? '對手得分 -1 (修正)' : '對手得分 +' + pts"
+              >
+                {{ pts > 0 ? '+' + pts : pts }}
+              </button>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-around mt-3 pt-3 border-t border-slate-800">
           <div class="text-center">
             <div class="text-xs text-slate-400 font-bold uppercase tracking-wider">團隊犯規 (本節)</div>
             <div 
@@ -490,6 +517,7 @@
               </button>
             </div>
           </div>
+          </div>
         </div>
 
         <!-- 分頁控制板 (Tab Panel) -->
@@ -502,28 +530,35 @@
               :class="activeTab === 'bench' ? 'border-b-2 border-indigo-500 text-white font-bold bg-slate-900/30' : 'text-slate-400 hover:text-slate-200'"
               class="flex-1 py-3 text-xs sm:text-sm text-center transition whitespace-nowrap"
             >
-              <i class="fa-solid fa-couch mr-1"></i> 板凳席 ({{ benchPlayers.length }})
+              <i class="fa-solid fa-couch mr-1"></i>板凳<span class="hidden sm:inline"> ({{ benchPlayers.length }})</span>
             </button>
             <button 
               @click="activeTab = 'boxscore'" 
               :class="activeTab === 'boxscore' ? 'border-b-2 border-indigo-500 text-white font-bold bg-slate-900/30' : 'text-slate-400 hover:text-slate-200'"
               class="flex-1 py-3 text-xs sm:text-sm text-center transition whitespace-nowrap"
             >
-              <i class="fa-solid fa-table-list mr-1"></i> 數據大表
+              <i class="fa-solid fa-table-list mr-1"></i>數據
             </button>
             <button 
               @click="activeTab = 'roster'" 
               :class="activeTab === 'roster' ? 'border-b-2 border-indigo-500 text-white font-bold bg-slate-900/30' : 'text-slate-400 hover:text-slate-200'"
               class="flex-1 py-3 text-xs sm:text-sm text-center transition whitespace-nowrap"
             >
-              <i class="fa-solid fa-users-gear mr-1"></i> 名單管理
+              <i class="fa-solid fa-users-gear mr-1"></i>名單
+            </button>
+            <button 
+              @click="activeTab = 'history'" 
+              :class="activeTab === 'history' ? 'border-b-2 border-indigo-500 text-white font-bold bg-slate-900/30' : 'text-slate-400 hover:text-slate-200'"
+              class="flex-1 py-3 text-xs sm:text-sm text-center transition whitespace-nowrap"
+            >
+              <i class="fa-solid fa-clock-rotate-left mr-1"></i>歷史
             </button>
             <button 
               @click="activeTab = 'cloud'" 
               :class="activeTab === 'cloud' ? 'border-b-2 border-indigo-500 text-white font-bold bg-slate-900/30' : 'text-slate-400 hover:text-slate-200'"
               class="flex-1 py-3 text-xs sm:text-sm text-center transition whitespace-nowrap"
             >
-              <i :class="syncError ? 'fa-solid fa-triangle-exclamation text-rose-400' : 'fa-solid fa-cloud'" class="mr-1"></i> 雲端同步
+              <i :class="syncError ? 'fa-solid fa-triangle-exclamation text-rose-400' : 'fa-solid fa-cloud'" class="mr-1"></i>雲端
             </button>
           </div>
 
@@ -533,7 +568,7 @@
             <!-- 1. 板凳席 (Bench) -->
             <div v-show="activeTab === 'bench'" class="space-y-2">
               <div v-if="benchPlayers.length === 0" class="text-center py-8 text-xs text-slate-500">
-                板凳席沒有球員。請在「名單管理」新增，或進行換人。
+                板凳席沒有球員。請在「名單」分頁新增，或進行換人。
               </div>
               <div v-else class="grid grid-cols-2 gap-2">
                 <button 
@@ -702,7 +737,7 @@
                   <i class="fa-solid fa-copy"></i> 複製文字報告
                 </button>
                 <button 
-                  @click="exportExcel" 
+                  @click="exportExcel()" 
                   :disabled="isExportingExcel"
                   class="flex-1 bg-emerald-700 hover:bg-emerald-600 border border-emerald-600 text-white text-xs font-semibold py-3 rounded-xl transition flex items-center justify-center gap-1.5 disabled:opacity-60"
                 >
@@ -749,15 +784,31 @@
                 </button>
               </form>
 
-              <!-- 還原預設名單按鈕 -->
+              <!-- 批次貼上名單 -->
               <div class="flex justify-between items-center px-1">
-                <span class="text-xs text-slate-400 font-bold">🏃‍♀️ 球員列表</span>
+                <span class="text-xs text-slate-400 font-bold">🏃‍♀️ 球員列表 ({{ players.length }} 人)</span>
                 <button 
                   type="button"
-                  @click="confirmRestoreDefaultRoster" 
-                  class="bg-slate-800 hover:bg-rose-950/40 border border-slate-800 hover:border-rose-900/50 text-slate-300 hover:text-rose-300 text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1"
+                  @click="showRosterPaste = !showRosterPaste" 
+                  class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1"
                 >
-                  <i class="fa-solid fa-rotate-left text-[10px]"></i> 還原東吳預設名單
+                  <i class="fa-solid fa-paste text-[10px]"></i> 批次貼上名單
+                </button>
+              </div>
+              <div v-if="showRosterPaste" class="bg-slate-950/40 p-3 rounded-xl border border-slate-800 space-y-2">
+                <p class="text-xs text-slate-400 leading-normal">一行一位球員，格式為「背號 姓名」。背號已經在名單裡的會略過。</p>
+                <textarea 
+                  v-model="rosterPasteText" 
+                  rows="5" 
+                  placeholder="4 小明&#10;7 阿華&#10;23 大雄" 
+                  class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none font-mono select-text"
+                ></textarea>
+                <button 
+                  type="button" 
+                  @click="addPlayersFromText" 
+                  class="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold py-2.5 rounded-xl transition"
+                >
+                  加入這些球員
                 </button>
               </div>
 
@@ -808,12 +859,65 @@
                 </div>
               </div>
               <p class="text-[11px] text-slate-500 leading-normal">
-                * 點擊球員姓名可直接編輯修改。<br>
+                * 點擊背號或姓名可直接修改，名單會自動存進這支隊伍，下一場比賽沿用。<br>
                 * 場上必須維持剛好 5 人以確保上場時間及攻守操作的正確記錄。
               </p>
             </div>
             
-            <!-- 4. 雲端同步 (Cloud) -->
+            <!-- 4. 歷史比賽 (History) -->
+            <div v-show="activeTab === 'history'" class="space-y-3">
+              <div class="bg-slate-950/40 p-3 rounded-xl border border-slate-800 flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                  <div class="text-sm font-bold text-slate-200 truncate">{{ teamName }}</div>
+                  <div class="text-xs text-slate-500 mt-0.5">
+                    已存 {{ historyGames.length }} 場<span v-if="seasonRecord.w + seasonRecord.l + seasonRecord.d > 0">・{{ seasonRecord.w }} 勝 {{ seasonRecord.l }} 負<span v-if="seasonRecord.d > 0"> {{ seasonRecord.d }} 平</span></span>
+                  </div>
+                </div>
+                <button 
+                  @click="exportSeasonExcel" 
+                  :disabled="historyGames.length === 0 || isExportingExcel"
+                  class="shrink-0 bg-emerald-700 hover:bg-emerald-600 border border-emerald-600 text-white text-xs font-semibold px-3 py-3 rounded-xl transition flex items-center gap-1.5 disabled:opacity-40"
+                >
+                  <i :class="isExportingExcel ? 'fa-solid fa-circle-notch animate-spin' : 'fa-solid fa-file-excel'"></i> 下載賽季 Excel
+                </button>
+              </div>
+
+              <div v-if="historyGames.length === 0" class="text-center py-8 text-xs text-slate-500 leading-relaxed">
+                還沒有已存檔的比賽。<br>比賽打完後按上方的「結束」，就會存到這裡。
+              </div>
+              <div 
+                v-for="g in historyGames" 
+                :key="g.id"
+                class="bg-slate-800/30 border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-2"
+              >
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span 
+                      class="text-xs font-bold px-1.5 py-0.5 rounded shrink-0"
+                      :class="{ '勝': 'bg-emerald-500/20 text-emerald-300', '負': 'bg-rose-500/20 text-rose-300' }[gameResult(g)] || 'bg-slate-700/60 text-slate-400'"
+                    >{{ gameResult(g) }}</span>
+                    <span class="text-sm font-bold text-slate-200 truncate">vs {{ g.opponentName || '（未填對手）' }}</span>
+                  </div>
+                  <div class="text-xs text-slate-500 font-mono mt-1">{{ g.date }}・{{ g.teamScore }} : {{ g.opponentScore > 0 ? g.opponentScore : '-' }}</div>
+                </div>
+                <div class="flex items-center gap-1 shrink-0">
+                  <button @click="exportExcel(g)" :disabled="isExportingExcel" class="text-emerald-400 hover:text-emerald-300 hover:bg-slate-800 w-10 h-10 flex items-center justify-center rounded-lg transition" title="下載這場比賽的 Excel">
+                    <i class="fa-solid fa-file-excel"></i>
+                  </button>
+                  <button @click="reopenGame(g)" class="text-slate-400 hover:text-indigo-300 hover:bg-slate-800 w-10 h-10 flex items-center justify-center rounded-lg transition" title="重新開啟這場比賽來修改">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                  </button>
+                  <button @click="deleteHistoryGame(g)" class="text-slate-500 hover:text-rose-400 hover:bg-slate-800 w-10 h-10 flex items-center justify-center rounded-lg transition" title="刪除這場比賽">
+                    <i class="fa-solid fa-trash-can text-sm"></i>
+                  </button>
+                </div>
+              </div>
+              <p class="text-[11px] text-slate-500 leading-normal">
+                * 歷史比賽只存在這台裝置的瀏覽器裡，換裝置或清除瀏覽資料就會消失，建議定期下載賽季 Excel 備份。
+              </p>
+            </div>
+
+            <!-- 5. 雲端同步 (Cloud) -->
             <div v-show="activeTab === 'cloud'" class="space-y-4">
               <!-- 未連接狀態 -->
               <div v-if="!isSupabaseConnected" class="space-y-3">
@@ -953,8 +1057,8 @@
             
           </div>
         </div>
-        <!-- 即時事件 Log (當打開數據大表時隱藏，讓大表擁有最大高度) -->
-        <div v-if="activeTab !== 'boxscore'" class="bg-slate-900/60 backdrop-blur-md rounded-2xl p-3 sm:p-4 border border-slate-800/80 shadow-md h-[240px] lg:h-[190px] shrink-0 flex flex-col overflow-hidden">
+        <!-- 即時事件 Log (只在板凳分頁顯示，其他分頁需要完整高度來顯示表格與清單) -->
+        <div v-if="activeTab === 'bench'" class="bg-slate-900/60 backdrop-blur-md rounded-2xl p-3 sm:p-4 border border-slate-800/80 shadow-md h-[240px] lg:h-[190px] shrink-0 flex flex-col overflow-hidden">
           <h2 class="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider flex items-center justify-between">
             <span>📋 即時事件 Log</span>
             <span class="text-[11px] text-slate-500 font-mono">最新在最上</span>
@@ -990,41 +1094,146 @@
       </section>
     </main>
 
-    <!-- 開啟新比賽確認 Modal -->
-    <div v-if="showResetModal" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-        <div class="flex items-center space-x-3 text-rose-500 mb-4">
-          <i class="fa-solid fa-circle-exclamation text-2xl animate-bounce"></i>
-          <h3 class="text-lg font-black">開啟新比賽</h3>
+    <!-- 結束比賽 Modal -->
+    <div v-if="showFinishModal" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 max-w-sm w-full shadow-2xl max-h-full overflow-y-auto">
+        <div class="flex items-center space-x-3 text-emerald-400 mb-4">
+          <i class="fa-solid fa-flag-checkered text-2xl"></i>
+          <h3 class="text-lg font-black">結束比賽</h3>
         </div>
-        
-        <p class="text-sm text-slate-300 mb-4 leading-relaxed">
-          您即將清空本場所有的得分、犯規、事件 Log 與上場時間，並將時間歸時為 <strong class="text-white">10:00</strong>。<br>
-          <strong class="text-indigo-400">注意：現有球員背號與名單將會完全保留</strong>，讓您免去重新輸入的繁瑣！此操作無法復原，是否確定？
-        </p>
 
-        <!-- 安全勾選確認 -->
-        <label class="flex items-center gap-2 mb-6 cursor-pointer select-none text-xs text-slate-400 hover:text-slate-200 bg-slate-950/40 p-2.5 rounded-lg border border-slate-800">
-          <input 
-            type="checkbox" 
-            v-model="confirmSavedBeforeReset" 
-            class="rounded bg-slate-950 border-slate-800 text-indigo-500 focus:ring-indigo-500 h-4 w-4"
-          >
-          <span>我確認本場數據已儲存（複製報告或同步雲端）</span>
-        </label>
+        <div class="space-y-3 mb-5">
+          <div>
+            <label class="text-xs text-slate-400 block mb-1">比賽日期</label>
+            <input type="date" v-model="gameDate" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="text-xs text-slate-400 block mb-1">對手隊名</label>
+            <input type="text" v-model="opponentName" placeholder="例如：某某大學" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none">
+          </div>
+          <div class="flex gap-3">
+            <div class="flex-1 min-w-0">
+              <label class="text-xs text-slate-400 block mb-1 truncate">{{ teamName }} 得分</label>
+              <div class="bg-slate-950/60 border border-slate-800 rounded-lg p-2.5 text-sm font-mono font-black text-amber-400">{{ teamTotalPoints }}</div>
+            </div>
+            <div class="flex-1 min-w-0">
+              <label class="text-xs text-slate-400 block mb-1">對手得分</label>
+              <input 
+                type="number" 
+                min="0" 
+                inputmode="numeric" 
+                :value="opponentScore" 
+                @change="setOpponentFinalScore($event.target.value)" 
+                class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-sm font-mono font-bold text-white focus:border-indigo-500 focus:outline-none"
+              >
+            </div>
+          </div>
+        </div>
 
-        <div class="flex gap-3">
-          <button @click="showResetModal = false" class="flex-1 bg-slate-800 hover:bg-slate-700 py-2.5 rounded-xl font-bold transition text-sm">
-            取消
+        <div class="space-y-2">
+          <button @click="finishGame" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold transition text-sm flex items-center justify-center gap-2">
+            <i class="fa-solid fa-box-archive"></i> 存入歷史並開新比賽
           </button>
+          <button @click="showFinishModal = false" class="w-full bg-slate-800 hover:bg-slate-700 py-3 rounded-xl font-bold transition text-sm">
+            取消，繼續這場比賽
+          </button>
+        </div>
+
+        <!-- 不存檔直接清空：要先勾選才按得下去，避免誤觸 -->
+        <div class="mt-5 pt-4 border-t border-slate-800">
+          <label class="flex items-center gap-2 mb-2 cursor-pointer select-none text-xs text-slate-400 hover:text-slate-200">
+            <input 
+              type="checkbox" 
+              v-model="confirmSavedBeforeReset" 
+              class="rounded bg-slate-950 border-slate-800 text-rose-500 focus:ring-rose-500 h-4 w-4"
+            >
+            <span>我不要保存這場比賽的數據</span>
+          </label>
           <button 
-            @click="resetGame" 
+            @click="discardGame" 
             :disabled="!confirmSavedBeforeReset"
-            class="flex-1 bg-rose-700 hover:bg-rose-600 text-white py-2.5 rounded-xl font-bold transition text-sm disabled:opacity-30 disabled:hover:bg-rose-700"
+            class="w-full bg-rose-900/60 hover:bg-rose-800 border border-rose-900 text-rose-100 py-2.5 rounded-xl font-bold transition text-xs disabled:opacity-30 disabled:hover:bg-rose-900/60"
           >
-            確定開啟新比賽
+            不存檔，清空並開新比賽
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- 隊伍 Modal：切換、新增、改名、刪除。還沒有任何隊伍時不能關閉 -->
+    <div v-if="showTeamModal" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 max-w-md w-full shadow-2xl max-h-full overflow-y-auto">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-black flex items-center gap-2">
+            <i class="fa-solid fa-shield-halved text-indigo-400"></i>
+            <span>{{ teams.length === 0 ? '歡迎！先建立你的球隊' : (isCreatingTeam ? '新增隊伍' : '隊伍') }}</span>
+          </h3>
+          <button v-if="teams.length > 0" @click="showTeamModal = false" class="text-slate-400 hover:text-white hover:bg-slate-800 w-10 h-10 flex items-center justify-center rounded-lg transition" title="關閉">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <!-- 隊伍清單 -->
+        <div v-if="!isCreatingTeam" class="space-y-2">
+          <div 
+            v-for="t in teams" 
+            :key="t.id"
+            :class="t.id === currentTeamId ? 'border-indigo-500/80 bg-indigo-950/20' : 'border-slate-800 bg-slate-800/20'"
+            class="border rounded-xl p-2 pl-3 flex items-center gap-2"
+          >
+            <div class="flex-1 min-w-0">
+              <input 
+                type="text" 
+                v-model="t.name" 
+                @change="renameTeam(t)" 
+                class="w-full min-w-0 bg-transparent border-b border-transparent hover:border-slate-700 focus:border-indigo-500 focus:outline-none text-sm font-bold text-white py-1"
+                title="點擊修改隊名"
+              />
+              <div class="text-xs text-slate-500">{{ t.roster.length }} 位球員</div>
+            </div>
+            <span v-if="t.id === currentTeamId" class="text-xs bg-indigo-600/30 text-indigo-300 font-bold px-3 py-2 rounded-lg shrink-0">使用中</span>
+            <button v-else @click="switchTeam(t.id)" class="bg-slate-800 hover:bg-indigo-600 text-slate-200 hover:text-white text-xs font-bold px-3 py-2 rounded-lg transition shrink-0">
+              切換
+            </button>
+            <button @click="deleteTeam(t)" class="text-slate-500 hover:text-rose-400 hover:bg-slate-800 w-10 h-10 flex items-center justify-center rounded-lg transition shrink-0" title="刪除隊伍">
+              <i class="fa-solid fa-trash-can text-sm"></i>
+            </button>
+          </div>
+          <button @click="startCreatingTeam" class="w-full border border-dashed border-slate-700 hover:border-indigo-500 text-slate-300 hover:text-white py-3 rounded-xl font-bold transition text-sm flex items-center justify-center gap-2">
+            <i class="fa-solid fa-plus"></i> 新增隊伍
+          </button>
+          <p class="text-[11px] text-slate-500 leading-normal pt-1">
+            * 每支隊伍有各自的名單、進行中的比賽和歷史比賽，切換時互不影響。
+          </p>
+        </div>
+
+        <!-- 新增隊伍表單 -->
+        <form v-else @submit.prevent="createTeam" class="space-y-3">
+          <div>
+            <label class="text-xs text-slate-400 block mb-1">隊名</label>
+            <input type="text" v-model="teamForm.name" required placeholder="例如：某某大學女籃" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="text-xs text-slate-400 block mb-1">球員名單（一行一位，格式為「背號 姓名」）</label>
+            <textarea 
+              v-model="teamForm.rosterText" 
+              rows="8" 
+              placeholder="4 小明&#10;7 阿華&#10;23 大雄" 
+              class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none font-mono select-text"
+            ></textarea>
+            <p class="text-[11px] text-slate-500 leading-normal mt-1">
+              * 前 5 位會先排為場上球員。名單之後隨時可以在「名單」分頁增減或修改，現在留空也可以。
+            </p>
+          </div>
+          <div class="flex gap-3 pt-1">
+            <button v-if="teams.length > 0" type="button" @click="isCreatingTeam = false" class="flex-1 bg-slate-800 hover:bg-slate-700 py-3 rounded-xl font-bold transition text-sm">
+              返回
+            </button>
+            <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-bold transition text-sm">
+              建立隊伍
+            </button>
+          </div>
+        </form>
       </div>
     </div>
 
@@ -1047,6 +1256,7 @@
     createApp({
       setup() {
         const STORAGE_KEY = "basketball_tracker_state";
+        const TEAMS_KEY = "basketball_tracker_teams";
         const QUARTER_KEYS = [1, 2, 3, 4, "OT"];
         const HISTORY_LIMIT = 30;        // 記憶體中保留的 Undo 步數
         const HISTORY_PERSIST_LIMIT = 5; // 寫進 localStorage 的 Undo 步數 (重新整理頁面後還能 Undo 的次數)
@@ -1070,13 +1280,33 @@
         };
 
         // 基本設定與球隊
-        const teamName = ref("東吳女籃 WSCU");
+        // 隊伍檔案：每支隊伍有自己的名單、進行中的比賽與歷史比賽
+        const teams = ref([]); // [{ id, name, roster: [{ id, number, name, starter }] }]
+        const currentTeamId = ref(null);
+        const currentTeam = computed(() => teams.value.find(t => t.id === currentTeamId.value) || null);
+        const teamName = ref(""); // 目前隊伍的隊名 (顯示用，跟著 currentTeam 走)
+        const showTeamModal = ref(false);
+        const isCreatingTeam = ref(false);
+        const teamForm = ref({ name: "", rosterText: "" });
+        const showRosterPaste = ref(false);
+        const rosterPasteText = ref("");
+        let lastRosterSignature = "";
+
+        // 本場比賽資訊
+        const gameId = ref("");
+        const gameDate = ref(todayString());
+        const opponentName = ref("");
+        const opponentPointsByQuarter = ref(createQuarterSeconds()); // 對手各節得分
+        const opponentScore = computed(() => QUARTER_KEYS.reduce((sum, q) => sum + (opponentPointsByQuarter.value[q] || 0), 0));
+
+        // 已結束並存檔的比賽 (目前隊伍)。紀錄只會整批替換，用 shallowRef 避免深層追蹤
+        const historyGames = shallowRef([]);
         const currentQuarter = ref(1);
         const quarters = QUARTER_KEYS;
         const possessionArrow = ref("none"); // W = 淺色, B = 深色, none = 尚未決定
 
         // 頁面選單控制
-        const activeTab = ref("bench"); // 'bench', 'boxscore', 'roster', 'cloud'
+        const activeTab = ref("bench"); // 'bench', 'boxscore', 'roster', 'history', 'cloud'
         const showFoulSelector = ref(false);
         const isBoxscoreMaximized = ref(false);
         const confirmSavedBeforeReset = ref(false);
@@ -1096,28 +1326,9 @@
         let audioCtx = null;
 
         // 提示與對話視窗
-        const showResetModal = ref(false);
+        const showFinishModal = ref(false);
         const toastMessage = ref("");
         const toastType = ref("info"); // 'info' | 'error'
-
-        // 預設球員陣容
-        const defaultPlayers = [
-          { id: 1, number: "1", name: "布魯克", isOnCourt: true, playedSeconds: 0, stats: createStatsObject() },
-          { id: 2, number: "2", name: "秀詔", isOnCourt: true, playedSeconds: 0, stats: createStatsObject() },
-          { id: 3, number: "3", name: "心瑜", isOnCourt: true, playedSeconds: 0, stats: createStatsObject() },
-          { id: 4, number: "4", name: "姍姍", isOnCourt: true, playedSeconds: 0, stats: createStatsObject() },
-          { id: 5, number: "5", name: "郁婷", isOnCourt: true, playedSeconds: 0, stats: createStatsObject() },
-          { id: 6, number: "6", name: "沂霈", isOnCourt: false, playedSeconds: 0, stats: createStatsObject() },
-          { id: 7, number: "7", name: "沛妤", isOnCourt: false, playedSeconds: 0, stats: createStatsObject() },
-          { id: 8, number: "8", name: "貝果", isOnCourt: false, playedSeconds: 0, stats: createStatsObject() },
-          { id: 9, number: "9", name: "咪魯", isOnCourt: false, playedSeconds: 0, stats: createStatsObject() },
-          { id: 10, number: "10", name: "芊妤", isOnCourt: false, playedSeconds: 0, stats: createStatsObject() },
-          { id: 11, number: "11", name: "茹雰", isOnCourt: false, playedSeconds: 0, stats: createStatsObject() },
-          { id: 12, number: "12", name: "舒涵", isOnCourt: false, playedSeconds: 0, stats: createStatsObject() },
-          { id: 13, number: "13", name: "海苔", isOnCourt: false, playedSeconds: 0, stats: createStatsObject() },
-          { id: 14, number: "16", name: "南西", isOnCourt: false, playedSeconds: 0, stats: createStatsObject() },
-          { id: 15, number: "17", name: "資穎", isOnCourt: false, playedSeconds: 0, stats: createStatsObject() }
-        ];
 
         const players = ref([]);
         const selectedCourtPlayer = ref(null);
@@ -1151,7 +1362,7 @@
         const isSupabaseSyncing = ref(false);
         const supabaseGamesList = ref([]);
         const isAutoSyncEnabled = ref(localStorage.getItem("supabase_autosync") === "1");
-        const currentGameCloudId = ref(localStorage.getItem("supabase_game_id") || null);
+        const currentGameCloudId = ref(null); // 這場比賽在雲端的 id，跟著比賽存檔一起保存
         const syncError = ref(false);   // 最近一次雲端上傳是否失敗
         const lastSyncedAt = ref("");   // 最近一次成功上傳的時間 (顯示用)
         let isSyncQueued = false;       // 上傳進行中又有新的同步請求時，排隊等這次結束再傳一次
@@ -1264,12 +1475,6 @@
           updatePlayerTotals(p);
         }
 
-        function createDefaultRoster() {
-          const roster = JSON.parse(JSON.stringify(defaultPlayers));
-          roster.forEach(normalizePlayer);
-          return roster;
-        }
-
         // 計算屬性
         const onCourtPlayers = computed(() => players.value.filter(p => p.isOnCourt));
         const benchPlayers = computed(() => players.value.filter(p => !p.isOnCourt));
@@ -1284,51 +1489,160 @@
           sec: getDisplaySeconds(p)
         })));
 
-        // 讀取/初始化本機儲存
+        function newId() {
+          return (window.crypto && crypto.randomUUID)
+            ? crypto.randomUUID()
+            : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+        }
+
+        // 每支隊伍「進行中的比賽」各存在自己的 localStorage 鍵，切換隊伍時互不影響
+        const stateKeyFor = (teamId) => `${STORAGE_KEY}_${teamId}`;
+
+        // 從比賽中的球員資料取出名單 (只留背號、姓名，以及目前是否在場上當作下一場的預設先發)
+        function rosterFromPlayers(list) {
+          return list.map(p => ({ id: p.id, number: String(p.number), name: p.name, starter: !!p.isOnCourt }));
+        }
+
+        function saveTeams() {
+          try {
+            localStorage.setItem(TEAMS_KEY, JSON.stringify({ teams: teams.value, currentTeamId: currentTeamId.value }));
+          } catch (e) {
+            console.error("隊伍資料儲存失敗", e);
+            showToast("隊伍資料儲存失敗，請檢查瀏覽器的儲存空間", 'error');
+          }
+        }
+
+        // 讀取隊伍清單。舊版只有單一隊伍的存檔會自動轉成第一支隊伍
+        function loadTeams() {
+          try {
+            const saved = JSON.parse(localStorage.getItem(TEAMS_KEY) || "null");
+            if (saved && Array.isArray(saved.teams)) {
+              teams.value = saved.teams;
+              currentTeamId.value = saved.teams.some(t => t.id === saved.currentTeamId)
+                ? saved.currentTeamId
+                : (saved.teams[0]?.id || null);
+              return;
+            }
+          } catch (e) {
+            console.error("解析隊伍資料失敗", e);
+          }
+
+          const legacy = localStorage.getItem(STORAGE_KEY);
+          if (!legacy) return;
+          try {
+            const state = JSON.parse(legacy);
+            const team = { id: newId(), name: state.teamName || "我的球隊", roster: rosterFromPlayers(state.players || []) };
+            // 舊版把雲端比賽 id 另外存在一個鍵，一起搬進比賽存檔
+            if (state.cloudGameId === undefined) state.cloudGameId = localStorage.getItem("supabase_game_id") || null;
+            localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem("supabase_game_id");
+            localStorage.setItem(stateKeyFor(team.id), JSON.stringify(state));
+            teams.value = [team];
+            currentTeamId.value = team.id;
+            saveTeams();
+          } catch (e) {
+            console.error("轉換舊版存檔失敗", e);
+          }
+        }
+
+        // 讀取目前隊伍「進行中的比賽」；沒有存檔就用隊伍名單開一場新的
         function loadState() {
-          const saved = localStorage.getItem(STORAGE_KEY);
+          stopTimer();
+          selectedCourtPlayer.value = null;
+          showFoulSelector.value = false;
+          lastRosterSignature = "";
+
+          const team = currentTeam.value;
+          if (!team) {
+            teamName.value = "";
+            players.value = [];
+            logs.value = [];
+            history.value = [];
+            return;
+          }
+          teamName.value = team.name;
+
+          const saved = localStorage.getItem(stateKeyFor(team.id));
           if (saved) {
             try {
               const state = JSON.parse(saved);
-              teamName.value = state.teamName || "東吳女籃 WSCU";
               currentQuarter.value = state.currentQuarter || 1;
               possessionArrow.value = state.possessionArrow || "none";
               remainingSeconds.value = state.remainingSeconds !== undefined ? state.remainingSeconds : 600;
               players.value = state.players || [];
               players.value.forEach(normalizePlayer);
-
+              
               sortPlayers();
               teamFouls.value = state.teamFouls || 0;
               teamTimeouts.value = state.teamTimeouts || 0;
               logs.value = state.logs || [];
               history.value = Array.isArray(state.history) ? state.history : [];
-              currentGameCloudId.value = localStorage.getItem("supabase_game_id") || null;
+              currentGameCloudId.value = state.cloudGameId || null;
+              gameId.value = state.gameId || newId();
+              gameDate.value = state.gameDate || todayString();
+              opponentName.value = state.opponentName || "";
+              opponentPointsByQuarter.value = { ...createQuarterSeconds(), ...(state.opponentPointsByQuarter || {}) };
+              return;
             } catch (e) {
-              console.error("解析本機儲存資料失敗，載入預設值", e);
-              resetToDefault();
+              console.error("解析本機儲存資料失敗，改開新比賽", e);
             }
-          } else {
-            resetToDefault();
           }
+          startFreshGame();
         }
 
-        function resetToDefault() {
-          teamName.value = "東吳女籃 WSCU";
+        // 用目前隊伍的名單開一場全新的比賽
+        function startFreshGame() {
+          const team = currentTeam.value;
+          if (!team) return;
+
+          stopTimer();
+          teamName.value = team.name;
           currentQuarter.value = 1;
           possessionArrow.value = "none";
           remainingSeconds.value = 600;
-          players.value = createDefaultRoster();
+
+          // 名單有標記先發就照標記，沒有就取背號最小的 5 位先上場
+          const roster = [...team.roster].sort((a, b) => (parseInt(a.number, 10) || 0) - (parseInt(b.number, 10) || 0));
+          const hasStarters = roster.some(r => r.starter);
+          let onCourt = 0;
+          players.value = roster.map(r => {
+            const p = { id: r.id, number: r.number, name: r.name, isOnCourt: (hasStarters ? !!r.starter : true) && onCourt < 5 };
+            if (p.isOnCourt) onCourt++;
+            normalizePlayer(p);
+            return p;
+          });
+
           teamFouls.value = 0;
           teamTimeouts.value = 0;
           currentGameCloudId.value = null;
-          localStorage.removeItem("supabase_game_id");
           logs.value = [];
           history.value = [];
+          gameId.value = newId();
+          gameDate.value = todayString();
+          opponentName.value = "";
+          opponentPointsByQuarter.value = createQuarterSeconds();
+          clearCourtSelection();
           saveState();
+        }
+
+        // 名單管理裡的新增、刪除、改背號改名會直接寫回隊伍檔案，下一場比賽沿用同一份名單
+        function syncRosterToTeam() {
+          const team = currentTeam.value;
+          if (!team) return;
+          const roster = rosterFromPlayers(players.value);
+          const signature = JSON.stringify(roster);
+          if (signature === lastRosterSignature) return;
+          lastRosterSignature = signature;
+          team.roster = roster;
+          saveTeams();
         }
 
         // 儲存狀態至本機
         function saveState() {
+          const team = currentTeam.value;
+          if (!team) return;
+          syncRosterToTeam();
+
           const state = {
             teamName: teamName.value,
             currentQuarter: currentQuarter.value,
@@ -1337,16 +1651,22 @@
             players: players.value,
             teamFouls: teamFouls.value,
             teamTimeouts: teamTimeouts.value,
-            logs: logs.value
+            logs: logs.value,
+            cloudGameId: currentGameCloudId.value,
+            gameId: gameId.value,
+            gameDate: gameDate.value,
+            opponentName: opponentName.value,
+            opponentPointsByQuarter: opponentPointsByQuarter.value
           };
+          const key = stateKeyFor(team.id);
           try {
             // Undo 快照每份都含整份球員與 Log，全部寫入會讓 localStorage 快速膨脹，所以只保留最近幾步
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, history: history.value.slice(0, HISTORY_PERSIST_LIMIT) }));
+            localStorage.setItem(key, JSON.stringify({ ...state, history: history.value.slice(0, HISTORY_PERSIST_LIMIT) }));
             hasWarnedSaveFailure = false;
           } catch (e) {
             // 多半是 QuotaExceededError (超過瀏覽器儲存上限)：先放棄 Undo 歷史，確保比賽數據本身存得進去
             try {
-              localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, history: [] }));
+              localStorage.setItem(key, JSON.stringify({ ...state, history: [] }));
             } catch (e2) {
               console.error("本機儲存失敗", e2);
               if (!hasWarnedSaveFailure) {
@@ -1355,6 +1675,217 @@
               }
             }
           }
+        }
+
+        // ---------- 隊伍管理 ----------
+
+        // 解析貼上的名單文字：一行一位球員，「背號 姓名」，中間可用空白、逗號或頓號分隔
+        function parseRosterText(text) {
+          const entries = [];
+          const errors = [];
+          text.split(/\r?\n/).map(line => line.trim()).filter(Boolean).forEach(line => {
+            const match = line.match(/^#?([^\s,，、]+)[\s,，、]+(.+)$/);
+            if (!match) {
+              errors.push(line);
+            } else if (entries.some(e => e.number === match[1])) {
+              errors.push(`${line} (背號重複)`);
+            } else {
+              entries.push({ number: match[1], name: match[2].trim() });
+            }
+          });
+          return { entries, errors };
+        }
+
+        function openTeamModal() {
+          isCreatingTeam.value = teams.value.length === 0;
+          showTeamModal.value = true;
+        }
+
+        function startCreatingTeam() {
+          teamForm.value = { name: "", rosterText: "" };
+          isCreatingTeam.value = true;
+        }
+
+        function createTeam() {
+          const name = teamForm.value.name.trim();
+          if (!name) {
+            showToast("請輸入隊名", 'error');
+            return;
+          }
+          const { entries, errors } = parseRosterText(teamForm.value.rosterText);
+          if (errors.length > 0) {
+            showToast(`有 ${errors.length} 行看不懂：「${errors[0]}」。格式為「背號 姓名」，一行一位`, 'error');
+            return;
+          }
+
+          const team = {
+            id: newId(),
+            name,
+            roster: entries.map((e, i) => ({ id: i + 1, number: e.number, name: e.name, starter: i < 5 }))
+          };
+          teams.value.push(team);
+          isCreatingTeam.value = false;
+          switchTeam(team.id);
+        }
+
+        function switchTeam(teamId) {
+          if (teamId !== currentTeamId.value) {
+            // 先把目前隊伍進行中的比賽存好，再載入另一隊的
+            stopTimer();
+            saveState();
+            currentTeamId.value = teamId;
+            saveTeams();
+            loadState();
+            refreshHistory();
+            activeTab.value = "bench";
+            showToast(`已切換到「${teamName.value}」`);
+          }
+          showTeamModal.value = false;
+        }
+
+        function renameTeam(team) {
+          team.name = team.name.trim() || "未命名球隊";
+          if (team.id === currentTeamId.value) teamName.value = team.name;
+          saveTeams();
+          saveState();
+        }
+
+        async function deleteTeam(team) {
+          if (!confirm(`確定要刪除「${team.name}」嗎？\n這支隊伍的名單、進行中的比賽和所有歷史比賽都會永久刪除，無法復原。`)) {
+            return;
+          }
+          try {
+            const records = await loadGameRecords(team.id);
+            await Promise.all(records.map(r => deleteGameRecord(r.id)));
+          } catch (e) {
+            console.error("刪除隊伍的歷史比賽失敗", e);
+          }
+          localStorage.removeItem(stateKeyFor(team.id));
+          teams.value = teams.value.filter(t => t.id !== team.id);
+
+          if (currentTeamId.value === team.id) {
+            currentTeamId.value = teams.value[0]?.id || null;
+            loadState();
+            refreshHistory();
+          }
+          saveTeams();
+          showToast(`已刪除「${team.name}」`);
+          if (teams.value.length === 0) startCreatingTeam();
+        }
+
+        // ---------- 歷史比賽 (存在 IndexedDB：瀏覽器內建的資料庫，容量比 localStorage 大得多) ----------
+        let dbPromise = null;
+        function openDb() {
+          if (!dbPromise) {
+            dbPromise = new Promise((resolve, reject) => {
+              const request = indexedDB.open("basketball-tracker", 1);
+              request.onupgradeneeded = () => {
+                const store = request.result.createObjectStore("games", { keyPath: "id" });
+                store.createIndex("teamId", "teamId");
+              };
+              request.onsuccess = () => resolve(request.result);
+              request.onerror = () => {
+                dbPromise = null;
+                reject(request.error);
+              };
+            });
+          }
+          return dbPromise;
+        }
+
+        async function gamesStoreRequest(mode, run) {
+          const db = await openDb();
+          return new Promise((resolve, reject) => {
+            const tx = db.transaction("games", mode);
+            const request = run(tx.objectStore("games"));
+            tx.oncomplete = () => resolve(request.result);
+            tx.onerror = () => reject(tx.error);
+            tx.onabort = () => reject(tx.error);
+          });
+        }
+        const saveGameRecord = (record) => gamesStoreRequest("readwrite", store => store.put(record));
+        const loadGameRecords = (teamId) => gamesStoreRequest("readonly", store => store.index("teamId").getAll(teamId));
+        const deleteGameRecord = (id) => gamesStoreRequest("readwrite", store => store.delete(id));
+
+        async function refreshHistory() {
+          const team = currentTeam.value;
+          if (!team) {
+            historyGames.value = [];
+            return;
+          }
+          try {
+            const records = await loadGameRecords(team.id);
+            // 讀取期間使用者可能已經切到別隊
+            if (team.id !== currentTeamId.value) return;
+            // 最新的比賽排最前面
+            historyGames.value = records.sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.savedAt || 0) - (a.savedAt || 0));
+          } catch (e) {
+            console.error("讀取歷史比賽失敗", e);
+            historyGames.value = [];
+          }
+        }
+
+        const seasonRecord = computed(() => {
+          const record = { w: 0, l: 0, d: 0 };
+          historyGames.value.forEach(g => {
+            const result = gameResult(g);
+            if (result === "勝") record.w++;
+            else if (result === "負") record.l++;
+            else if (result === "平") record.d++;
+          });
+          return record;
+        });
+
+        // 目前這場比賽的資料 (匯出 Excel 與存入歷史共用)
+        function currentGameData() {
+          return {
+            teamName: teamName.value,
+            date: gameDate.value || todayString(),
+            opponentName: opponentName.value.trim(),
+            opponentPointsByQuarter: opponentPointsByQuarter.value,
+            opponentScore: opponentScore.value,
+            teamScore: teamTotalPoints.value,
+            currentQuarter: currentQuarter.value,
+            players: players.value,
+            logs: logs.value
+          };
+        }
+
+        // ---------- 對手得分 ----------
+
+        // 對手得分只記分數；points 為負數是用來修正多按的分數
+        function recordOpponentScore(points) {
+          const q = currentQuarter.value;
+          const current = opponentPointsByQuarter.value[q] || 0;
+          if (current + points < 0) {
+            showToast("本節對手得分已經是 0，無法再扣", 'error');
+            return;
+          }
+          playClickSound(392, 0.08); // G4
+          pushHistoryState();
+          opponentPointsByQuarter.value[q] = current + points;
+          addLog({
+            actionText: `對手得分 ${points > 0 ? '+' : ''}${points} (對手累計 ${opponentScore.value} 分)`,
+            color: '#94a3b8',
+            actionType: 'OPP_SCORE',
+            meta: { points }
+          });
+          saveState();
+        }
+
+        // 在「結束比賽」視窗直接輸入對手最終得分 (比賽中沒有逐球記對手得分時使用)
+        function setOpponentFinalScore(value) {
+          const target = Math.max(0, parseInt(value, 10) || 0);
+          const q = currentQuarter.value;
+          const others = opponentScore.value - (opponentPointsByQuarter.value[q] || 0);
+          if (target >= others) {
+            // 差額記在目前這一節，其他節已記的分數保持不變
+            opponentPointsByQuarter.value[q] = target - others;
+          } else {
+            // 比其他節加起來還少，無法分配回各節，只保留總分
+            opponentPointsByQuarter.value = { ...createQuarterSeconds(), [q]: target };
+          }
+          saveState();
         }
 
         // 寫入一筆事件 Log (最新的放最前面)
@@ -1624,7 +2155,7 @@
           localStorage.removeItem("supabase_url");
           localStorage.removeItem("supabase_key");
           currentGameCloudId.value = null;
-          localStorage.removeItem("supabase_game_id");
+          saveState();
           supabaseGamesList.value = [];
           syncError.value = false;
           lastSyncedAt.value = "";
@@ -1684,7 +2215,7 @@
               if (error) throw error;
               if (data && data.id) {
                 currentGameCloudId.value = data.id;
-                localStorage.setItem("supabase_game_id", data.id);
+                saveState();
               }
               if (!silent) showToast("全新比賽紀錄已上傳至雲端！");
             }
@@ -1747,7 +2278,6 @@
             if (data) {
               stopTimer();
 
-              teamName.value = data.team_name || "東吳女籃 WSCU";
               currentQuarter.value = isNaN(Number(data.quarter)) ? data.quarter : Number(data.quarter);
               remainingSeconds.value = data.remaining_seconds ?? 600;
               // 雲端紀錄可能是舊版程式存的，欄位不一定齊全，載入時一律補齊
@@ -1762,7 +2292,11 @@
               possessionArrow.value = lastPossessionLog?.meta?.new || "none";
 
               currentGameCloudId.value = data.id;
-              localStorage.setItem("supabase_game_id", data.id);
+              // 雲端資料表沒有對手與日期以外的比賽資訊，視為一場新載入的比賽
+              gameId.value = newId();
+              gameDate.value = data.game_date || todayString();
+              opponentName.value = "";
+              opponentPointsByQuarter.value = createQuarterSeconds();
 
               history.value = [];
               selectedCourtPlayer.value = null;
@@ -1795,7 +2329,7 @@
 
             if (currentGameCloudId.value === gameId) {
               currentGameCloudId.value = null;
-              localStorage.removeItem("supabase_game_id");
+              saveState();
             }
 
             fetchCloudGames(true);
@@ -1980,6 +2514,7 @@
             players: JSON.parse(JSON.stringify(players.value)),
             teamFouls: teamFouls.value,
             teamTimeouts: teamTimeouts.value,
+            opponentPointsByQuarter: { ...opponentPointsByQuarter.value },
             // Log 項目建立後就不會再被修改，只需複製陣列本身，不必逐筆深拷貝
             logs: toRaw(logs.value).slice()
           };
@@ -2018,6 +2553,7 @@
           });
           teamFouls.value = prevState.teamFouls;
           teamTimeouts.value = prevState.teamTimeouts || 0;
+          if (prevState.opponentPointsByQuarter) opponentPointsByQuarter.value = { ...prevState.opponentPointsByQuarter };
           logs.value = prevState.logs;
           showFoulSelector.value = false;
 
@@ -2085,6 +2621,9 @@
                 teamTimeouts.value = logItem.meta.prevTeamTimeouts || 0;
               }
             }
+          } else if (logItem.actionType === 'OPP_SCORE') {
+            const q = logItem.quarter;
+            opponentPointsByQuarter.value[q] = Math.max(0, (opponentPointsByQuarter.value[q] || 0) - logItem.meta.points);
           } else if (logItem.actionType === 'POSSESSION') {
             possessionArrow.value = logItem.meta.prev;
           } else if (logItem.actionType === 'TIMEOUT') {
@@ -2101,41 +2640,66 @@
           showToast("已撤銷該筆特定事件");
         }
 
-        // 新增球員到 Roster
-        function addNewPlayer() {
-          const num = newPlayerNumber.value.trim();
-          const name = newPlayerName.value.trim();
-
-          if (!num || !name) return;
-
-          // 檢查背號是否重複
-          const duplicate = players.value.find(p => p.number === num);
-          if (duplicate) {
-            showToast(`已有名單背號為 #${num} 的球員，不可重複`, 'error');
-            return;
-          }
-
-          pushHistoryState();
-
+        // 把一位球員加進目前的名單 (呼叫前要先確認背號沒有重複)
+        function insertPlayer(number, name) {
           const maxId = players.value.reduce((max, p) => p.id > max ? p.id : max, 0);
-
           const newPlayer = {
             id: maxId + 1,
-            number: num,
-            name: name,
+            number,
+            name,
             // 場上未滿 5 人時新球員直接上場，否則先放板凳
             isOnCourt: onCourtPlayers.value.length < 5
           };
           normalizePlayer(newPlayer);
           players.value.push(newPlayer);
+        }
 
+        // 新增球員到 Roster
+        function addNewPlayer() {
+          const num = newPlayerNumber.value.trim();
+          const name = newPlayerName.value.trim();
+          
+          if (!num || !name) return;
+
+          // 檢查背號是否重複
+          if (players.value.some(p => p.number === num)) {
+            showToast(`已有名單背號為 #${num} 的球員，不可重複`, 'error');
+            return;
+          }
+
+          pushHistoryState();
+          insertPlayer(num, name);
           sortPlayers();
 
           newPlayerName.value = "";
           newPlayerNumber.value = "";
-
+          
           saveState();
           showToast(`已新增球員 #${num} ${name}`);
+        }
+
+        // 批次貼上名單：一次加入多位球員，背號已存在的會略過
+        function addPlayersFromText() {
+          const { entries, errors } = parseRosterText(rosterPasteText.value);
+          if (errors.length > 0) {
+            showToast(`有 ${errors.length} 行看不懂：「${errors[0]}」。格式為「背號 姓名」，一行一位`, 'error');
+            return;
+          }
+          const fresh = entries.filter(e => !players.value.some(p => p.number === e.number));
+          if (fresh.length === 0) {
+            showToast(entries.length === 0 ? "請先貼上名單" : "這些背號都已經在名單裡了", 'error');
+            return;
+          }
+
+          pushHistoryState();
+          fresh.forEach(e => insertPlayer(e.number, e.name));
+          sortPlayers();
+          rosterPasteText.value = "";
+          showRosterPaste.value = false;
+          saveState();
+
+          const skipped = entries.length - fresh.length;
+          showToast(`已加入 ${fresh.length} 位球員${skipped ? `，略過 ${skipped} 位背號重複的` : ""}`);
         }
 
         // 移除球員
@@ -2160,49 +2724,96 @@
           showToast(`已刪除球員 #${player.number}`);
         }
 
-        function confirmRestoreDefaultRoster() {
-          if (confirm("是否確定清除目前名單，並還原為東吳女籃的預設名單？")) {
-            pushHistoryState();
-            players.value = createDefaultRoster();
-            sortPlayers();
-            clearCourtSelection();
-            saveState();
-            showToast("已成功載入東吳女籃預設名單！");
-          }
-        }
-
-        // 觸發重設對話框
-        function confirmResetGame() {
+        // 開啟「結束比賽」視窗
+        function openFinishModal() {
+          if (!currentTeam.value) return;
           playClickSound(220, 0.1);
           confirmSavedBeforeReset.value = false;
-          showResetModal.value = true;
+          showFinishModal.value = true;
         }
 
-        // 執行比賽清空
-        function resetGame() {
-          showResetModal.value = false;
+        // 把這場比賽存入歷史，然後用同一份名單開新比賽
+        async function finishGame() {
+          const team = currentTeam.value;
+          if (!team) return;
           stopTimer();
 
-          // 清空所有球員的攻守統計，但保留球員背號與名單、上場狀態
-          players.value.forEach(p => {
-            p.statsByQuarter = createQuarterStats();
-            p.playedSecondsByQuarter = createQuarterSeconds();
-            updatePlayerTotals(p);
-          });
+          // IndexedDB 不能直接存 Vue 的響應式物件，先轉成純資料
+          const record = JSON.parse(JSON.stringify({
+            ...currentGameData(),
+            id: gameId.value,
+            teamId: team.id,
+            remainingSeconds: remainingSeconds.value,
+            possessionArrow: possessionArrow.value,
+            teamFouls: teamFouls.value,
+            teamTimeouts: teamTimeouts.value,
+            savedAt: Date.now()
+          }));
+          try {
+            await saveGameRecord(record);
+          } catch (e) {
+            console.error("存入歷史失敗", e);
+            showToast("存入歷史失敗！這場比賽仍保留在畫面上，請先下載 Excel 備份", 'error');
+            return;
+          }
 
-          remainingSeconds.value = 600;
-          currentQuarter.value = 1;
-          possessionArrow.value = "none";
-          teamFouls.value = 0;
-          teamTimeouts.value = 0;
-          currentGameCloudId.value = null;
-          localStorage.removeItem("supabase_game_id");
-          logs.value = [];
+          showFinishModal.value = false;
+          startFreshGame();
+          await refreshHistory();
+          activeTab.value = "history";
+          showToast("比賽已存入歷史，並開好新的一場");
+        }
+
+        // 不存入歷史，直接清空並開新比賽
+        function discardGame() {
+          showFinishModal.value = false;
+          startFreshGame();
+          showToast("已清空這場比賽，球員名單保留");
+        }
+
+        // 把歷史比賽重新開啟成進行中的比賽 (用來修正紀錄)。再按一次「結束」會覆蓋原本那筆
+        function reopenGame(record) {
+          const hasProgress = logs.value.length > 0 || teamTotalPoints.value > 0 || opponentScore.value > 0;
+          const warning = hasProgress
+            ? "目前進行中的比賽還沒存入歷史，重新開啟這場歷史比賽會把它蓋掉。\n確定要繼續嗎？"
+            : "要重新開啟這場比賽來修改嗎？改完後再按一次「結束」就會更新這筆紀錄。";
+          if (!confirm(warning)) return;
+
+          stopTimer();
+          const data = JSON.parse(JSON.stringify(record));
+          currentQuarter.value = data.currentQuarter || 1;
+          possessionArrow.value = data.possessionArrow || "none";
+          remainingSeconds.value = data.remainingSeconds ?? 0;
+          players.value = data.players || [];
+          players.value.forEach(normalizePlayer);
+          sortPlayers();
+          teamFouls.value = data.teamFouls || 0;
+          teamTimeouts.value = data.teamTimeouts || 0;
+          logs.value = data.logs || [];
           history.value = [];
+          currentGameCloudId.value = null;
+          gameId.value = data.id;
+          gameDate.value = data.date || todayString();
+          opponentName.value = data.opponentName || "";
+          opponentPointsByQuarter.value = { ...createQuarterSeconds(), ...(data.opponentPointsByQuarter || {}) };
           clearCourtSelection();
-
           saveState();
-          showToast("比賽數據已全數重設，球員名單已保留。");
+          activeTab.value = "boxscore";
+          showToast("已重新開啟這場比賽");
+        }
+
+        async function deleteHistoryGame(record) {
+          if (!confirm(`確定要刪除 ${record.date} 對「${record.opponentName || '未填對手'}」這場比賽嗎？此操作無法復原。`)) {
+            return;
+          }
+          try {
+            await deleteGameRecord(record.id);
+            await refreshHistory();
+            showToast("已刪除這場比賽");
+          } catch (e) {
+            console.error("刪除歷史比賽失敗", e);
+            showToast("刪除失敗，請再試一次", 'error');
+          }
         }
 
         // 顯示通知 Toast
@@ -2273,6 +2884,9 @@
           let report = `🏀 【${teamName.value}】${tabLabel} 攻守統計報告\n`;
           report += `📅 紀錄日期: ${new Date().toLocaleDateString()}\n`;
           report += `📊 團隊得分: ${rows.reduce((sum, row) => sum + row.s.pts, 0)} 分\n`;
+          if (boxscoreQuarterTab.value === 'total' && (opponentName.value || opponentScore.value > 0)) {
+            report += `🆚 對手: ${opponentName.value || '未填'}　比分 ${teamTotalPoints.value} : ${opponentScore.value}\n`;
+          }
           report += `==================================\n`;
           report += `背號 姓名   上場時間 得分 2P(投中/出手) 3P(投中/出手) FT(投中/出手) 助攻 籃板(進/防) 抄截 阻攻 失誤 犯規\n`;
 
@@ -2387,9 +3001,9 @@
         const pctOf = (made, attempt) => (row) => row.s[attempt] ? row.s[made] / row.s[attempt] : "-";
         const EXCEL_STAT_COLUMNS = [
           { group: "球員", title: "背號", width: 7, get: row => row.number },
-          { group: "球員", title: "姓名", width: 13, get: row => row.name, align: "left" },
+          { id: "name", group: "球員", title: "姓名", width: 14, get: row => row.name, align: "left" },
           { title: "上場時間", width: 10, get: row => formatMinutes(row.sec) },
-          { title: "得分", width: 7, get: row => row.s.pts, bold: true },
+          { id: "pts", title: "得分", width: 7, get: row => row.s.pts, bold: true },
           { group: "2分球", title: "命中", get: row => row.s.fg2m },
           { group: "2分球", title: "出手", get: row => row.s.fg2a },
           { group: "2分球", title: "命中率", width: 9, get: pctOf("fg2m", "fg2a"), pct: true },
@@ -2405,18 +3019,53 @@
           { title: "助攻", get: row => row.s.ast },
           { title: "抄截", get: row => row.s.stl },
           { title: "阻攻", get: row => row.s.blk },
-          { title: "失誤", get: row => row.s.to },
+          { title: "失誤", get: row => row.s.to }
+        ];
+        const EXCEL_FOUL_COLUMNS = [
           { group: "犯規", title: "次數", get: row => row.s.pf },
           { group: "犯規", title: "明細", width: 26, get: row => row.foulDetail, align: "left" }
         ];
+        const EXCEL_FOUL_COUNT_COLUMN = { title: "犯規", get: row => row.s.pf };
         // 只有全場總表才會多出「各節得分」
         const EXCEL_QUARTER_POINT_COLUMNS = QUARTER_KEYS.map(q => ({
-          group: "各節得分", title: QUARTER_LABELS[q], width: 8, get: row => row.qPts[q]
+          id: `q${q}`, group: "各節得分", title: QUARTER_LABELS[q], width: 8, get: row => row.qPts[q]
         }));
+        // 2分球 ~ 失誤：以「全隊」為單位的表 (賽季總覽) 也會用到這一段
+        const EXCEL_SHOOTING_TO_TURNOVER_COLUMNS = EXCEL_STAT_COLUMNS.slice(4);
 
-        // 整理某一張數據表要用的資料列：每位球員一列，外加一列全隊合計
-        function buildExcelRows(tab) {
-          const rows = players.value.map(p => {
+        // 把多份統計加總成一份 (犯規清單不加總)
+        function sumStats(list) {
+          const total = createStatsObject();
+          list.forEach(s => {
+            Object.keys(total).forEach(key => {
+              if (key !== 'foulsList') total[key] += s[key] || 0;
+            });
+          });
+          return total;
+        }
+
+        // 純數字背號存成數字，在 Excel 裡才能正確排序；"00"、"07" 這類保留文字
+        function excelJersey(number) {
+          return /^(0|[1-9]\d*)$/.test(String(number)) ? Number(number) : number;
+        }
+
+        // 球員在這場比賽是否有上場 (有上場時間或任何一項數據)
+        function playerAppeared(p) {
+          return (p.playedSeconds || 0) > 0
+            || Object.keys(p.stats || {}).some(key => key !== 'foulsList' && p.stats[key] > 0);
+        }
+
+        // 沒記錄對手得分 (0 分) 時不判定勝負
+        function gameResult(g) {
+          if (!(g.opponentScore > 0)) return "-";
+          if (g.teamScore > g.opponentScore) return "勝";
+          if (g.teamScore < g.opponentScore) return "負";
+          return "平";
+        }
+
+        // 整理某一場比賽、某一張數據表要用的資料列：每位球員一列，外加一列全隊合計
+        function buildExcelRows(g, tab) {
+          const rows = g.players.map(p => {
             const s = getStatsFor(p, tab);
             const qPts = {};
             QUARTER_KEYS.forEach(q => { qPts[q] = p.statsByQuarter?.[q]?.pts || 0; });
@@ -2427,24 +3076,16 @@
                   .map(q => `${QUARTER_LABELS[q]} ${p.statsByQuarter[q].foulsList.join(",")}`)
                   .join("；")
               : (s.foulsList || []).join(",");
-            return {
-              // 純數字背號存成數字，在 Excel 裡才能正確排序；"00"、"07" 這類保留文字
-              number: /^(0|[1-9]\d*)$/.test(p.number) ? Number(p.number) : p.number,
-              name: p.name,
-              sec: getSecondsFor(p, tab),
-              s, qPts, foulDetail
-            };
+            return { number: excelJersey(p.number), name: p.name, sec: getSecondsFor(p, tab), s, qPts, foulDetail };
           });
 
-          const total = { number: "", name: "全隊合計", sec: 0, s: createStatsObject(), qPts: {}, foulDetail: "" };
-          QUARTER_KEYS.forEach(q => { total.qPts[q] = 0; });
-          rows.forEach(row => {
-            total.sec += row.sec;
-            Object.keys(total.s).forEach(key => {
-              if (key !== 'foulsList') total.s[key] += row.s[key] || 0;
-            });
-            QUARTER_KEYS.forEach(q => { total.qPts[q] += row.qPts[q]; });
-          });
+          const total = {
+            number: "", name: "全隊合計", foulDetail: "",
+            sec: rows.reduce((sum, row) => sum + row.sec, 0),
+            s: sumStats(rows.map(row => row.s)),
+            qPts: {}
+          };
+          QUARTER_KEYS.forEach(q => { total.qPts[q] = rows.reduce((sum, row) => sum + row.qPts[q], 0); });
           return { rows, total };
         }
 
@@ -2459,27 +3100,20 @@
           cell.border = EXCEL_ALL_BORDERS;
         }
 
-        // 新增一張數據工作表 (全場總表或某一節)
-        function addExcelStatsSheet(workbook, sheetName, tab) {
-          const columns = tab === 'total' ? [...EXCEL_STAT_COLUMNS, ...EXCEL_QUARTER_POINT_COLUMNS] : EXCEL_STAT_COLUMNS;
-          const { rows, total } = buildExcelRows(tab);
-          const HEADER_ROW = 4; // 第 4、5 列是兩層表頭，第 6 列起是球員資料
-
-          const ws = workbook.addWorksheet(sheetName, {
-            // 凍結前 2 欄 (背號、姓名) 與表頭，往右或往下捲動時仍看得到是誰、是哪一欄
-            views: [{ state: "frozen", xSplit: 2, ySplit: HEADER_ROW + 1 }],
-            pageSetup: { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
-          });
-          ws.columns = columns.map(c => ({ width: c.width || 7 }));
-
-          // 標題與比賽資訊 (不合併儲存格，避免跨過凍結欄位時被切斷)
+        // 工作表最上方的標題與說明文字 (不合併儲存格，避免跨過凍結欄位時被切斷)
+        function writeExcelTitle(ws, title, info) {
           const titleCell = ws.getCell(1, 1);
-          titleCell.value = `${teamName.value}　攻守紀錄　${sheetName}`;
+          titleCell.value = title;
           titleCell.font = { bold: true, size: 16 };
           ws.getRow(1).height = 26;
           const infoCell = ws.getCell(2, 1);
-          infoCell.value = `紀錄日期：${new Date().toLocaleDateString()}　｜　${tab === 'total' ? '全場' : '本節'}全隊得分：${total.s.pts} 分`;
+          infoCell.value = info;
           infoCell.font = { color: { argb: "FF475569" } };
+        }
+
+        // 依欄位定義寫出一張有兩層表頭的表格。footers 是放在最後、以粗體底色標示的合計列
+        function writeExcelTable(ws, headerRow, columns, rows, footers = []) {
+          ws.columns = columns.map(c => ({ width: c.width || 7 }));
 
           // 兩層表頭：有 group 的相鄰欄位橫向合併成大表頭，沒有 group 的欄位直向合併兩列
           let col = 0;
@@ -2488,78 +3122,114 @@
             let end = col;
             if (group) {
               while (end + 1 < columns.length && columns[end + 1].group === group) end++;
-              ws.mergeCells(HEADER_ROW, col + 1, HEADER_ROW, end + 1);
-              ws.getCell(HEADER_ROW, col + 1).value = group;
-              for (let c = col; c <= end; c++) ws.getCell(HEADER_ROW + 1, c + 1).value = columns[c].title;
+              if (end > col) ws.mergeCells(headerRow, col + 1, headerRow, end + 1);
+              ws.getCell(headerRow, col + 1).value = group;
+              for (let c = col; c <= end; c++) ws.getCell(headerRow + 1, c + 1).value = columns[c].title;
             } else {
-              ws.mergeCells(HEADER_ROW, col + 1, HEADER_ROW + 1, col + 1);
-              ws.getCell(HEADER_ROW, col + 1).value = columns[col].title;
+              ws.mergeCells(headerRow, col + 1, headerRow + 1, col + 1);
+              ws.getCell(headerRow, col + 1).value = columns[col].title;
             }
             col = end + 1;
           }
           for (let c = 1; c <= columns.length; c++) {
-            styleExcelHeaderCell(ws.getCell(HEADER_ROW, c), "FF312E81");
-            styleExcelHeaderCell(ws.getCell(HEADER_ROW + 1, c), "FF4338CA");
+            styleExcelHeaderCell(ws.getCell(headerRow, c), "FF312E81");
+            styleExcelHeaderCell(ws.getCell(headerRow + 1, c), "FF4338CA");
           }
-          ws.getRow(HEADER_ROW).height = 20;
-          ws.getRow(HEADER_ROW + 1).height = 20;
+          ws.getRow(headerRow).height = 20;
+          ws.getRow(headerRow + 1).height = 20;
 
-          // 資料列 + 最後一列全隊合計
-          [...rows, total].forEach((row, i) => {
-            const isTotal = row === total;
-            const excelRow = ws.getRow(HEADER_ROW + 2 + i);
+          [...rows, ...footers].forEach((row, i) => {
+            const isFooter = i >= rows.length;
+            const excelRow = ws.getRow(headerRow + 2 + i);
             columns.forEach((c, ci) => {
               const cell = excelRow.getCell(ci + 1);
-              cell.value = c.get(row);
-              if (c.pct && typeof cell.value === 'number') cell.numFmt = "0.0%";
+              // row.only 有設定時，這一列只填指定的欄位 (例如「對手」列只有隊名與得分)
+              const value = row.only ? row.only[c.id] : c.get(row);
+              cell.value = value === undefined || value === null ? "" : value;
+              if (typeof value === 'number') {
+                const numFmt = c.pct ? "0.0%" : (row.numFmt || c.numFmt);
+                if (numFmt) cell.numFmt = numFmt;
+              }
               cell.alignment = { horizontal: c.align || "center", vertical: "middle" };
               cell.border = EXCEL_ALL_BORDERS;
-              cell.font = { bold: isTotal || !!c.bold };
-              if (isTotal) cell.fill = excelFill("FFFEF3C7");
+              cell.font = { bold: isFooter || !!c.bold };
+              if (isFooter) cell.fill = excelFill(row.fill || "FFFEF3C7");
               else if (i % 2 === 1) cell.fill = excelFill("FFF1F5F9");
             });
           });
         }
 
-        // 事件紀錄工作表：依發生順序由先到後
-        function addExcelLogSheet(workbook) {
-          const ws = workbook.addWorksheet("事件紀錄", { views: [{ state: "frozen", ySplit: 1 }] });
-          const headers = [["序號", 7], ["節次", 9], ["該節剩餘時間", 14], ["背號", 7], ["姓名", 13], ["事件", 50]];
+        // 單層表頭、從第 1 列開始的簡單表格 (事件紀錄與給程式分析用的長表)
+        function writeExcelFlatTable(ws, headers, rows, leftAlignFrom = Infinity) {
           ws.columns = headers.map(([, width]) => ({ width }));
           headers.forEach(([title], i) => {
             const cell = ws.getCell(1, i + 1);
             cell.value = title;
             styleExcelHeaderCell(cell, "FF312E81");
           });
-
-          const ordered = [...logs.value].reverse();
-          ordered.forEach((l, i) => {
-            const excelRow = ws.addRow([
-              i + 1,
-              QUARTER_LABELS[l.quarter] || String(l.quarter),
-              l.timeStr,
-              l.playerNumber ?? "",
-              l.playerName ?? "",
-              l.actionText
-            ]);
+          rows.forEach(values => {
+            const excelRow = ws.addRow(values);
             excelRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-              cell.alignment = { horizontal: colNumber >= 5 ? "left" : "center", vertical: "middle" };
+              cell.alignment = { horizontal: colNumber >= leftAlignFrom ? "left" : "center", vertical: "middle" };
               cell.border = EXCEL_ALL_BORDERS;
             });
           });
-          if (ordered.length === 0) {
-            ws.addRow(["", "", "", "", "", "（本場尚無事件紀錄）"]);
-          } else {
-            // 加上篩選按鈕，方便在 Excel 裡只看某一節或某位球員
+          if (rows.length > 0) {
+            // 加上篩選按鈕，方便在 Excel 裡只看某一節、某場比賽或某位球員
             ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: headers.length } };
           }
         }
 
+        // 新增一張單場數據工作表 (全場總表或某一節)
+        function addExcelStatsSheet(workbook, g, sheetName, tab) {
+          const isTotal = tab === 'total';
+          const columns = [...EXCEL_STAT_COLUMNS, ...EXCEL_FOUL_COLUMNS, ...(isTotal ? EXCEL_QUARTER_POINT_COLUMNS : [])];
+          const { rows, total } = buildExcelRows(g, tab);
+          const HEADER_ROW = 4; // 第 4、5 列是兩層表頭，第 6 列起是球員資料
+
+          const ws = workbook.addWorksheet(sheetName, {
+            // 凍結前 2 欄 (背號、姓名) 與表頭，往右或往下捲動時仍看得到是誰、是哪一欄
+            views: [{ state: "frozen", xSplit: 2, ySplit: HEADER_ROW + 1 }],
+            pageSetup: { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
+          });
+
+          const opponentPoints = isTotal ? (g.opponentScore || 0) : (g.opponentPointsByQuarter?.[tab] || 0);
+          const opponentLabel = g.opponentName || "對手";
+          writeExcelTitle(
+            ws,
+            `${g.teamName}　vs　${g.opponentName || '（未填對手）'}　${isTotal ? '全場總表' : QUARTER_LABELS[tab]}`,
+            `比賽日期：${g.date || '-'}　｜　${isTotal ? '全場' : '本節'}比分：${g.teamName} ${total.s.pts} : ${g.opponentScore > 0 ? opponentPoints : '-'} ${opponentLabel}`
+          );
+
+          // 合計列下面再放一列對手得分，方便對照
+          const opponentRow = { fill: "FFE2E8F0", only: { name: `對手：${opponentLabel}`, pts: g.opponentScore > 0 ? opponentPoints : "-" } };
+          QUARTER_KEYS.forEach(q => { opponentRow.only[`q${q}`] = g.opponentScore > 0 ? (g.opponentPointsByQuarter?.[q] || 0) : "-"; });
+
+          writeExcelTable(ws, HEADER_ROW, columns, rows, [total, opponentRow]);
+        }
+
+        // 事件紀錄工作表：依發生順序由先到後
+        function addExcelLogSheet(workbook, g) {
+          const ws = workbook.addWorksheet("事件紀錄", { views: [{ state: "frozen", ySplit: 1 }] });
+          const headers = [["序號", 7], ["節次", 9], ["該節剩餘時間", 14], ["背號", 7], ["姓名", 14], ["事件", 50]];
+          const rows = [...g.logs].reverse().map((l, i) => [
+            i + 1,
+            QUARTER_LABELS[l.quarter] || String(l.quarter),
+            l.timeStr,
+            l.playerNumber ?? "",
+            l.playerName ?? "",
+            l.actionText
+          ]);
+          writeExcelFlatTable(ws, headers, rows, 5);
+          if (rows.length === 0) ws.addRow(["", "", "", "", "", "（本場尚無事件紀錄）"]);
+        }
+
         // 欄位說明工作表：讓沒用過這個系統的人也看得懂每一欄
-        function addExcelLegendSheet(workbook) {
+        function addExcelLegendSheet(workbook, extraItems = []) {
           const ws = workbook.addWorksheet("欄位說明");
-          ws.columns = [{ width: 26 }, { width: 80 }];
+          ws.columns = [{ width: 26 }, { width: 86 }];
           const legend = [
+            ...extraItems,
             ["上場時間", "分:秒。計時器跑動期間，在場上的球員會自動累計。"],
             ["得分", "2分球命中 ×2 ＋ 3分球命中 ×3 ＋ 罰球命中 ×1。"],
             ["命中 / 出手", "命中是投進的次數，出手是投籃總次數（投進＋沒進）。"],
@@ -2569,7 +3239,8 @@
             ["犯規次數", "個人犯規的累計次數。"],
             ["犯規明細", "紀錄時所選的犯規代號（P、P1、P2、P3）。總表會標出是哪一節犯的。"],
             ["各節得分", "該球員在每一節各得幾分，只出現在全場總表。"],
-            ["全隊合計", "每張數據表的最後一列，是全隊所有球員加總。"],
+            ["全隊合計", "數據表最後的粗體列，是全隊所有球員加總。"],
+            ["對手", "只記錄對手的隊名與得分。對手得分顯示「-」代表這場沒有記錄對手得分，因此不判定勝負。"],
             ["事件紀錄", "整場比賽依發生順序列出的每一筆紀錄；「該節剩餘時間」是事件發生當下的比賽時鐘。"]
           ];
           ["欄位", "說明"].forEach((title, i) => {
@@ -2587,36 +3258,179 @@
           });
         }
 
-        function buildExcelWorkbook(ExcelJS) {
+        // 單場比賽的活頁簿：全場總表 + 有打到的各節 + 事件紀錄 + 欄位說明
+        function buildExcelWorkbook(ExcelJS, g) {
           const workbook = new ExcelJS.Workbook();
           workbook.creator = "單隊籃球攻守紀錄系統";
           workbook.created = new Date();
 
-          addExcelStatsSheet(workbook, "全場總表", "total");
+          addExcelStatsSheet(workbook, g, "全場總表", "total");
           QUARTER_KEYS.forEach(q => {
             // 還沒打到的節次不產生工作表，避免多出全是 0 的表
-            const hasData = players.value.some(p => (p.playedSecondsByQuarter?.[q] || 0) > 0)
-              || logs.value.some(l => String(l.quarter) === String(q));
-            if (hasData || String(q) === String(currentQuarter.value)) {
-              addExcelStatsSheet(workbook, QUARTER_LABELS[q], q);
+            const hasData = g.players.some(p => (p.playedSecondsByQuarter?.[q] || 0) > 0)
+              || g.logs.some(l => String(l.quarter) === String(q));
+            if (hasData || String(q) === String(g.currentQuarter)) {
+              addExcelStatsSheet(workbook, g, QUARTER_LABELS[q], q);
             }
           });
-          addExcelLogSheet(workbook);
+          addExcelLogSheet(workbook, g);
           addExcelLegendSheet(workbook);
           return workbook;
         }
 
-        // 下載 Excel 活頁簿 (全場總表 + 各節 + 事件紀錄 + 欄位說明)
-        async function exportExcel() {
+        // 工作表名稱不能含 \ / ? * [ ] :，最長 31 個字，也不能重複
+        function uniqueSheetName(base, used) {
+          const clean = base.replace(/[\\/?*\[\]:]/g, " ").trim() || "比賽";
+          let name = clean.slice(0, 31);
+          for (let n = 2; used.has(name); n++) {
+            const suffix = ` (${n})`;
+            name = clean.slice(0, 31 - suffix.length) + suffix;
+          }
+          used.add(name);
+          return name;
+        }
+
+        // 賽季活頁簿：賽季總覽 + 球員累計 + 逐場球員數據 (長表) + 每場比賽各一張 + 欄位說明
+        function buildSeasonWorkbook(ExcelJS, team, games) {
+          const workbook = new ExcelJS.Workbook();
+          workbook.creator = "單隊籃球攻守紀錄系統";
+          workbook.created = new Date();
+
+          // 依日期由早到晚
+          const ordered = [...games].sort((a, b) => (a.date || "").localeCompare(b.date || "") || (a.savedAt || 0) - (b.savedAt || 0));
+          const usedNames = new Set(["賽季總覽", "球員累計", "逐場球員數據", "欄位說明"]);
+          const HEADER_ROW = 4;
+          const frozen = (xSplit) => ({
+            views: [{ state: "frozen", xSplit, ySplit: HEADER_ROW + 1 }],
+            pageSetup: { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
+          });
+          const average = (stats, n) => {
+            const avg = createStatsObject();
+            Object.keys(avg).forEach(key => { if (key !== 'foulsList') avg[key] = n ? stats[key] / n : 0; });
+            return avg;
+          };
+
+          // --- 1. 賽季總覽：每場比賽一列 ---
+          const gameRows = ordered.map((g, i) => {
+            const hasOpponent = g.opponentScore > 0;
+            return {
+              label: i + 1,
+              date: g.date || "-",
+              opponent: g.opponentName || "（未填）",
+              s: sumStats(g.players.map(p => p.stats)),
+              opponentScore: hasOpponent ? g.opponentScore : "-",
+              result: gameResult(g),
+              diff: hasOpponent ? g.teamScore - g.opponentScore : "-"
+            };
+          });
+          const wins = gameRows.filter(r => r.result === "勝").length;
+          const losses = gameRows.filter(r => r.result === "負").length;
+          const draws = gameRows.filter(r => r.result === "平").length;
+          const recordText = `${wins} 勝 ${losses} 負${draws ? ` ${draws} 平` : ""}`;
+          const seasonStats = sumStats(gameRows.map(r => r.s));
+          const tracked = gameRows.filter(r => typeof r.opponentScore === 'number');
+          const opponentTotal = tracked.reduce((sum, r) => sum + r.opponentScore, 0);
+          const diffTotal = tracked.reduce((sum, r) => sum + r.diff, 0);
+          const overviewColumns = [
+            { title: "場次", width: 7, get: r => r.label },
+            { title: "日期", width: 12, get: r => r.date },
+            { title: "對手", width: 18, get: r => r.opponent, align: "left" },
+            { group: "比分", title: "我方", get: r => r.s.pts, bold: true },
+            { group: "比分", title: "對手", get: r => r.opponentScore },
+            { group: "比分", title: "勝負", get: r => r.result },
+            { group: "比分", title: "分差", get: r => r.diff },
+            ...EXCEL_SHOOTING_TO_TURNOVER_COLUMNS,
+            EXCEL_FOUL_COUNT_COLUMN
+          ];
+          const overview = workbook.addWorksheet("賽季總覽", frozen(3));
+          writeExcelTitle(overview, `${team.name}　賽季總覽`, `共 ${ordered.length} 場　｜　戰績：${recordText}　｜　匯出日期：${todayString()}`);
+          writeExcelTable(overview, HEADER_ROW, overviewColumns, gameRows, [
+            { label: "合計", date: "", opponent: recordText, s: seasonStats, opponentScore: tracked.length ? opponentTotal : "-", result: "", diff: tracked.length ? diffTotal : "-" },
+            {
+              label: "場均", date: "", opponent: "", numFmt: "0.0",
+              s: average(seasonStats, ordered.length),
+              opponentScore: tracked.length ? opponentTotal / tracked.length : "-",
+              result: "",
+              diff: tracked.length ? diffTotal / tracked.length : "-"
+            }
+          ]);
+
+          // --- 2. 球員累計：每位球員一列，整季加總與場均 ---
+          const byPlayer = new Map();
+          ordered.forEach(g => g.players.forEach(p => {
+            if (!byPlayer.has(p.id)) byPlayer.set(p.id, { gp: 0, sec: 0, statsList: [] });
+            const row = byPlayer.get(p.id);
+            // 背號或姓名中途改過時，以最近一場為準
+            row.number = excelJersey(p.number);
+            row.name = p.name;
+            if (playerAppeared(p)) row.gp++;
+            row.sec += p.playedSeconds || 0;
+            row.statsList.push(p.stats);
+          }));
+          const playerRows = [...byPlayer.values()]
+            .map(row => ({ ...row, s: sumStats(row.statsList) }))
+            .sort((a, b) => (parseInt(a.number, 10) || 0) - (parseInt(b.number, 10) || 0));
+          const perGame = (pick) => (row) => row.gp ? pick(row.s) / row.gp : "-";
+          const playerColumns = [
+            { group: "球員", title: "背號", width: 7, get: row => row.number },
+            { group: "球員", title: "姓名", width: 14, get: row => row.name, align: "left" },
+            { title: "出賽場數", width: 9, get: row => row.gp },
+            { title: "總上場時間", width: 11, get: row => formatMinutes(row.sec) },
+            ...EXCEL_STAT_COLUMNS.slice(3),
+            EXCEL_FOUL_COUNT_COLUMN,
+            { group: "場均", title: "得分", width: 8, get: perGame(s => s.pts), numFmt: "0.0", bold: true },
+            { group: "場均", title: "籃板", width: 8, get: perGame(s => s.oreb + s.dreb), numFmt: "0.0" },
+            { group: "場均", title: "助攻", width: 8, get: perGame(s => s.ast), numFmt: "0.0" }
+          ];
+          const playerSheet = workbook.addWorksheet("球員累計", frozen(2));
+          writeExcelTitle(playerSheet, `${team.name}　球員賽季累計`, `共 ${ordered.length} 場　｜　「場均」以該球員有出賽的場數計算`);
+          writeExcelTable(playerSheet, HEADER_ROW, playerColumns, playerRows, [
+            { number: "", name: "全隊合計", gp: ordered.length, sec: playerRows.reduce((sum, row) => sum + row.sec, 0), s: seasonStats }
+          ]);
+
+          // --- 3. 逐場球員數據 (長表)：每位球員每場一列、單層表頭，方便用樞紐分析表或 pandas 分析 ---
+          const longSheet = workbook.addWorksheet("逐場球員數據", { views: [{ state: "frozen", ySplit: 1 }] });
+          const longHeaders = [
+            ["比賽日期", 12], ["對手", 18], ["勝負", 7], ["背號", 7], ["姓名", 14], ["有出賽", 8], ["上場秒數", 10], ["得分", 7],
+            ["2分命中", 9], ["2分出手", 9], ["3分命中", 9], ["3分出手", 9], ["罰球命中", 9], ["罰球出手", 9],
+            ["進攻籃板", 9], ["防守籃板", 9], ["助攻", 7], ["抄截", 7], ["阻攻", 7], ["失誤", 7], ["犯規", 7]
+          ];
+          const longRows = [];
+          ordered.forEach(g => g.players.forEach(p => {
+            const s = p.stats;
+            longRows.push([
+              g.date || "", g.opponentName || "", gameResult(g), excelJersey(p.number), p.name,
+              playerAppeared(p) ? "是" : "否", p.playedSeconds || 0, s.pts,
+              s.fg2m, s.fg2a, s.fg3m, s.fg3a, s.ftm, s.fta, s.oreb, s.dreb, s.ast, s.stl, s.blk, s.to, s.pf
+            ]);
+          }));
+          writeExcelFlatTable(longSheet, longHeaders, longRows);
+
+          // --- 4. 每場比賽各一張全場數據表 ---
+          ordered.forEach(g => {
+            const name = uniqueSheetName(`${(g.date || "").slice(5)} vs ${g.opponentName || "未填對手"}`, usedNames);
+            addExcelStatsSheet(workbook, g, name, "total");
+          });
+
+          addExcelLegendSheet(workbook, [
+            ["賽季總覽", "每場比賽一列的全隊數據。最後兩列是整季合計與場均。"],
+            ["球員累計", "每位球員整季的加總。「出賽場數」是有上場時間或有任何一項數據的場數。"],
+            ["逐場球員數據", "每位球員每場一列的原始數據，適合用篩選、樞紐分析表或程式做進一步分析。"],
+            ["各場工作表", "名稱為「月-日 vs 對手」，內容是該場的全場數據表。"]
+          ]);
+          return workbook;
+        }
+
+        async function downloadWorkbook(build, filename, doneMessage) {
           if (isExportingExcel.value) return;
           playClickSound(440, 0.05);
           isExportingExcel.value = true;
           try {
             const ExcelJS = await loadExcelJs();
-            const buffer = await buildExcelWorkbook(ExcelJS).xlsx.writeBuffer();
+            const buffer = await build(ExcelJS).xlsx.writeBuffer();
             const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-            downloadBlob(blob, `${teamName.value}_攻守紀錄_${todayString()}.xlsx`);
-            showToast("Excel 檔案下載完成！");
+            downloadBlob(blob, filename);
+            showToast(doneMessage);
           } catch (e) {
             console.error("匯出 Excel 失敗", e);
             showToast("匯出 Excel 失敗，請確認網路連線後再試一次 (或先改用 CSV)", 'error');
@@ -2625,9 +3439,35 @@
           }
         }
 
+        // 下載單場 Excel：不傳參數是目前這場，傳入歷史紀錄則匯出那一場
+        function exportExcel(record) {
+          const g = record || currentGameData();
+          const opponent = g.opponentName ? `_vs_${g.opponentName}` : "";
+          return downloadWorkbook(
+            ExcelJS => buildExcelWorkbook(ExcelJS, g),
+            `${g.teamName}${opponent}_攻守紀錄_${g.date || todayString()}.xlsx`,
+            "Excel 檔案下載完成！"
+          );
+        }
+
+        // 下載賽季 Excel：目前隊伍所有已存入歷史的比賽
+        function exportSeasonExcel() {
+          const team = currentTeam.value;
+          if (!team || historyGames.value.length === 0) return;
+          return downloadWorkbook(
+            ExcelJS => buildSeasonWorkbook(ExcelJS, team, historyGames.value),
+            `${team.name}_賽季數據_${todayString()}.xlsx`,
+            `賽季 Excel 下載完成！共 ${historyGames.value.length} 場`
+          );
+        }
+
         // 生命週期與事件綁定
         onMounted(() => {
+          loadTeams();
           loadState();
+          refreshHistory();
+          // 第一次使用還沒有任何隊伍：直接開啟建立隊伍的視窗
+          if (teams.value.length === 0) openTeamModal();
 
           // 讀取先前儲存的音效開關
           const savedSound = localStorage.getItem("sound_enabled");
@@ -2653,7 +3493,7 @@
 
         function handleGlobalKeydown(e) {
           // 空白鍵控制計時啟動/暫停 (若目前無 input 焦點)
-          if (e.code === "Space" && document.activeElement.tagName !== "INPUT") {
+          if (e.code === "Space" && !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName)) {
             e.preventDefault();
             toggleTimer();
           }
@@ -2696,19 +3536,23 @@
         }
 
         return {
+          teams, currentTeamId, showTeamModal, isCreatingTeam, teamForm, showRosterPaste, rosterPasteText,
+          openTeamModal, startCreatingTeam, createTeam, switchTeam, renameTeam, deleteTeam, addPlayersFromText,
+          gameDate, opponentName, opponentScore, recordOpponentScore, setOpponentFinalScore,
+          historyGames, seasonRecord, gameResult, exportSeasonExcel,
           teamName, currentQuarter, quarters, possessionArrow,
           activeTab, isTimerRunning, isEditingTime, tempTimeInput, timeInputRef,
-          isSoundEnabled, showResetModal, toastMessage, toastType, players, selectedCourtPlayer,
+          isSoundEnabled, showFinishModal, toastMessage, toastType, players, selectedCourtPlayer,
           teamFouls, logs, history, newPlayerName, newPlayerNumber,
           onCourtPlayers, benchPlayers, teamTotalPoints, formattedTime,
           confirmTimeEdit, changeQuarter, togglePossession, setPossession,
           selectCourtPlayer, clearCourtSelection, handleBenchPlayerClick, togglePlayerCourtStatus,
           recordAction, undo, deleteSpecificLog, addNewPlayer, removePlayer,
-          confirmResetGame, resetGame, formatMinutes, toggleSound, copyTextReport, exportCSV, exportExcel, isExportingExcel, saveState,
+          openFinishModal, finishGame, discardGame, reopenGame, deleteHistoryGame, formatMinutes, toggleSound, copyTextReport, exportCSV, exportExcel, isExportingExcel, saveState,
           toggleTimer, adjustTime, teamTimeouts, recordTimeout, maxTimeouts,
           supabaseUrl, supabaseKey, isSupabaseConnected, isSupabaseSyncing, supabaseGamesList, isAutoSyncEnabled, currentGameCloudId,
           syncError, lastSyncedAt,
-          testSupabaseConnection, disconnectSupabase, saveToSupabase, fetchCloudGames, loadGameFromCloud, deleteGameFromCloud, toggleAutoSync, onPlayerNumberChange, confirmRestoreDefaultRoster,
+          testSupabaseConnection, disconnectSupabase, saveToSupabase, fetchCloudGames, loadGameFromCloud, deleteGameFromCloud, toggleAutoSync, onPlayerNumberChange,
           boxscoreQuarterTab, boxscoreTabs, boxscoreRows,
           showFoulSelector, recordFoul, formatQuarterFouls,
           isBoxscoreMaximized, confirmSavedBeforeReset
