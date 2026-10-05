@@ -220,6 +220,17 @@
           <span class="hidden sm:inline">結束</span>
         </button>
       </div>
+
+      <!-- 本節時間到：不自動換節 (節末常有哨響後才補記的罰球或犯規)，改由這顆按鈕一鍵進入下一節 -->
+      <div v-if="nextQuarter" class="order-last basis-full flex items-center justify-center gap-3 bg-amber-500/10 border border-amber-500/40 rounded-xl px-3 py-2">
+        <span class="text-sm font-bold text-amber-300"><i class="fa-solid fa-bell mr-1"></i>{{ quarterLabels[currentQuarter] }}時間到</span>
+        <button 
+          @click="changeQuarter(nextQuarter)" 
+          class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-sm px-4 h-10 rounded-lg transition flex items-center gap-1.5"
+        >
+          進入{{ quarterLabels[nextQuarter] }} <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
     </header>
 
     <!-- 主區區網格 (Main Layout Grid) -->
@@ -824,14 +835,16 @@
                     <input 
                       type="text" 
                       v-model="p.number" 
-                      @change="onPlayerNumberChange" 
+                      @focus="rememberField(p.number)" 
+                      @change="onPlayerNumberChange(p)" 
                       class="bg-transparent border-b border-transparent hover:border-slate-700 focus:border-indigo-500 focus:outline-none text-sm text-slate-200 font-bold font-mono w-10 py-1.5 text-center"
                       title="點擊修改背號"
                     />
                     <input 
                       type="text" 
                       v-model="p.name" 
-                      @change="saveState" 
+                      @focus="rememberField(p.name)" 
+                      @change="onPlayerNameChange(p)" 
                       class="bg-transparent border-b border-transparent hover:border-slate-700 focus:border-indigo-500 focus:outline-none text-sm text-white font-semibold w-28 py-1.5"
                       title="點擊修改姓名"
                     />
@@ -859,7 +872,8 @@
                 </div>
               </div>
               <p class="text-[11px] text-slate-500 leading-normal">
-                * 點擊背號或姓名可直接修改，名單會自動存進這支隊伍，下一場比賽沿用。<br>
+                <span v-if="isRosterDetached" class="text-amber-400">* 這場是重新開啟的歷史比賽或雲端載入的比賽，在這裡改名單只影響這一場，不會改到隊伍名單。<br></span>
+                <span v-else>* 點擊背號或姓名可直接修改，名單會自動存進這支隊伍，下一場比賽沿用。<br></span>
                 * 場上必須維持剛好 5 人以確保上場時間及攻守操作的正確記錄。
               </p>
             </div>
@@ -1307,6 +1321,9 @@
         const rosterPasteText = ref("");
         const backupFileInput = ref(null);
         let lastRosterSignature = "";
+        // 目前這場是「重新開啟的歷史比賽」或「從雲端載入的比賽」時為 true：
+        // 它的球員是當時的陣容，不能拿來覆蓋隊伍現在的名單
+        const isRosterDetached = ref(false);
 
         // 本場比賽資訊
         const gameId = ref("");
@@ -1498,6 +1515,12 @@
 
         const formattedTime = computed(() => formatMinutes(remainingSeconds.value));
 
+        // 本節時間走完後可以直接進入的下一節。第四節與延長賽結束後可能是比賽結束或延長，交給使用者自己決定
+        const nextQuarter = computed(() => {
+          if (remainingSeconds.value !== 0 || isTimerRunning.value || !currentTeam.value) return null;
+          return [1, 2, 3].includes(currentQuarter.value) ? currentQuarter.value + 1 : null;
+        });
+
         // 數據大表每一列要顯示的資料 (依目前選的分節分頁)，先算好一次，模板就不必每格重複查詢
         const boxscoreRows = computed(() => players.value.map(p => ({
           p,
@@ -1567,6 +1590,7 @@
           selectedCourtPlayer.value = null;
           showFoulSelector.value = false;
           lastRosterSignature = "";
+          isRosterDetached.value = false;
 
           const team = currentTeam.value;
           if (!team) {
@@ -1594,6 +1618,7 @@
               logs.value = state.logs || [];
               history.value = Array.isArray(state.history) ? state.history : [];
               currentGameCloudId.value = state.cloudGameId || null;
+              isRosterDetached.value = !!state.rosterDetached;
               gameId.value = state.gameId || newId();
               gameDate.value = state.gameDate || todayString();
               opponentName.value = state.opponentName || "";
@@ -1631,6 +1656,7 @@
           teamFouls.value = 0;
           teamTimeouts.value = 0;
           currentGameCloudId.value = null;
+          isRosterDetached.value = false;
           logs.value = [];
           history.value = [];
           gameId.value = newId();
@@ -1644,7 +1670,7 @@
         // 名單管理裡的新增、刪除、改背號改名會直接寫回隊伍檔案，下一場比賽沿用同一份名單
         function syncRosterToTeam() {
           const team = currentTeam.value;
-          if (!team) return;
+          if (!team || isRosterDetached.value) return;
           const roster = rosterFromPlayers(players.value);
           const signature = JSON.stringify(roster);
           if (signature === lastRosterSignature) return;
@@ -1669,6 +1695,7 @@
             teamTimeouts: teamTimeouts.value,
             logs: logs.value,
             cloudGameId: currentGameCloudId.value,
+            rosterDetached: isRosterDetached.value,
             gameId: gameId.value,
             gameDate: gameDate.value,
             opponentName: opponentName.value,
@@ -1737,7 +1764,8 @@
           const team = {
             id: newId(),
             name,
-            roster: entries.map((e, i) => ({ id: i + 1, number: e.number, name: e.name, starter: i < 5 }))
+            roster: entries.map((e, i) => ({ id: i + 1, number: e.number, name: e.name, starter: i < 5 })),
+            lastPlayerId: entries.length
           };
           teams.value.push(team);
           isCreatingTeam.value = false;
@@ -1869,7 +1897,8 @@
             const team = {
               id: backup.team.id,
               name: String(backup.team.name || "匯入的球隊"),
-              roster: backup.team.roster.map(r => ({ id: r.id, number: String(r.number), name: String(r.name), starter: !!r.starter }))
+              roster: backup.team.roster.map(r => ({ id: r.id, number: String(r.number), name: String(r.name), starter: !!r.starter })),
+              lastPlayerId: Number(backup.team.lastPlayerId) || 0
             };
             for (const g of games) {
               await saveGameRecord({ ...g, teamId: team.id });
@@ -2103,13 +2132,31 @@
           showToast("時間格式錯誤，請使用 分鐘:秒數 格式，例如 10:00", 'error');
         }
 
+        // 延長賽依 FIBA 規則視為第四節的延續，團犯要把第四節的一起算
+        function foulQuartersFor(q) {
+          return q === 'OT' ? ['4', 'OT'] : [String(q)];
+        }
+
+        // 某一節全隊已記的犯規次數
+        function teamFoulsFor(q) {
+          return players.value.reduce((sum, p) => (
+            sum + foulQuartersFor(q).reduce((s, key) => s + (p.statsByQuarter?.[key]?.pf || 0), 0)
+          ), 0);
+        }
+
+        // 暫停次數是以「上半場 / 下半場 / 延長賽」為單位計算
+        function timeoutPeriodOf(q) {
+          if (String(q) === 'OT') return 'OT';
+          return (String(q) === '1' || String(q) === '2') ? 'H1' : 'H2';
+        }
+
         // 節數切換
         function changeQuarter(q) {
           const prevQ = currentQuarter.value;
           // 點到目前所在的節數時不動作，避免誤觸把時鐘與團犯重設 (延長賽可再點一次進入下一個延長賽)
           if (q === prevQ) {
             if (q !== 'OT') return;
-            if (!confirm("要開始下一個延長賽嗎？時間會重設為 5:00，團犯與暫停次數也會重設。")) return;
+            if (!confirm("要開始下一個延長賽嗎？時間會重設為 5:00，暫停次數也會重設 (團犯延續)。")) return;
           }
 
           playClickSound(440, 0.05);
@@ -2131,8 +2178,9 @@
           // 換節自動重設單節剩餘時間 (10:00，延長賽為 5:00)
           remainingSeconds.value = q === 'OT' ? 300 : 600;
 
-          teamFouls.value = 0;
-          let note = `節數由 Q${prevQ} 切換至 Q${q} (本節團犯已自動歸零)`;
+          // 團犯以該節實際已記的次數為準：新的一節是 0，切回打過的節數則恢復原本的次數
+          teamFouls.value = teamFoulsFor(q);
+          let note = `節數由 Q${prevQ} 切換至 Q${q} (本節團犯 ${teamFouls.value} 次)`;
 
           // 判斷是否需要歸零暫停次數（上半場到下半場、或進入延長賽）
           const isPrevHalf1 = (prevQ === 1 || prevQ === 2);
@@ -2208,8 +2256,37 @@
           });
         }
 
-        function onPlayerNumberChange() {
+        // 名單裡直接點背號或姓名修改：先記下修改前的值，改成不合法的內容時還原
+        let fieldBeforeEdit = "";
+        function rememberField(value) {
+          fieldBeforeEdit = value;
+        }
+
+        function onPlayerNumberChange(player) {
+          const number = String(player.number).trim();
+          if (!number) {
+            player.number = fieldBeforeEdit;
+            showToast("背號不能是空白", 'error');
+            return;
+          }
+          if (players.value.some(p => p.id !== player.id && p.number === number)) {
+            player.number = fieldBeforeEdit;
+            showToast(`背號 #${number} 已經有人使用，不可重複`, 'error');
+            return;
+          }
+          player.number = number;
           sortPlayers();
+          saveState();
+        }
+
+        function onPlayerNameChange(player) {
+          const name = String(player.name).trim();
+          if (!name) {
+            player.name = fieldBeforeEdit;
+            showToast("姓名不能是空白", 'error');
+            return;
+          }
+          player.name = name;
           saveState();
         }
 
@@ -2298,6 +2375,8 @@
           }
 
           isSupabaseSyncing.value = true;
+          // 上傳需要時間，期間使用者可能已經結束比賽或切換隊伍；記下現在是哪一場，完成時再核對
+          const uploadingGameId = gameId.value;
 
           const payload = {
             team_name: teamName.value,
@@ -2327,7 +2406,8 @@
                 .single();
 
               if (error) throw error;
-              if (data && data.id) {
+              // 還是同一場比賽才記下雲端 id，否則下次上傳會用別場的資料蓋掉這筆雲端紀錄
+              if (data && data.id && gameId.value === uploadingGameId) {
                 currentGameCloudId.value = data.id;
                 saveState();
               }
@@ -2406,6 +2486,7 @@
               possessionArrow.value = lastPossessionLog?.meta?.new || "none";
 
               currentGameCloudId.value = data.id;
+              isRosterDetached.value = true;
               // 雲端資料表沒有對手與日期以外的比賽資訊，視為一場新載入的比賽
               gameId.value = newId();
               gameDate.value = data.game_date || todayString();
@@ -2612,8 +2693,10 @@
 
           showFoulSelector.value = false;
 
-          if (teamFouls.value >= 4) {
-            showToast("團隊犯規已達 4 次！下次起將進入加罰狀態！", 'error');
+          if (teamFouls.value === 4) {
+            showToast("團隊犯規已達 4 次！下一次犯規起對手加罰", 'error');
+          } else if (teamFouls.value > 4) {
+            showToast(`團隊犯規第 ${teamFouls.value} 次，對手加罰`, 'error');
           }
 
           saveState();
@@ -2687,6 +2770,17 @@
 
         // 單獨刪除/撤銷特定的 Log 事件
         function deleteSpecificLog(logItem) {
+          if (logItem.actionType === 'SUB') {
+            // 只有「換上來的人還在場上、換下去的人還在板凳」時才能單獨換回來；
+            // 之後若又有別的換人，硬換回來會讓場上變成 4 人或 6 人
+            const subOut = players.value.find(p => p.id === logItem.meta.subOutId);
+            const subIn = players.value.find(p => p.id === logItem.meta.subInId);
+            if (subOut && subIn && (!subIn.isOnCourt || subOut.isOnCourt)) {
+              showToast("這次換人之後場上陣容又變動過，無法單獨撤銷。請改用 Undo，或到「名單」分頁調整場上球員", 'error');
+              return;
+            }
+          }
+
           playClickSound(220, 0.1);
           pushHistoryState();
 
@@ -2714,7 +2808,7 @@
                 }
               }
               qStats.pf = qStats.foulsList ? qStats.foulsList.length : 0;
-              if (String(logItem.quarter) === String(currentQuarter.value)) {
+              if (foulQuartersFor(currentQuarter.value).includes(String(logItem.quarter))) {
                 teamFouls.value = Math.max(0, teamFouls.value - 1);
               }
               updatePlayerTotals(p);
@@ -2741,7 +2835,10 @@
           } else if (logItem.actionType === 'POSSESSION') {
             possessionArrow.value = logItem.meta.prev;
           } else if (logItem.actionType === 'TIMEOUT') {
-            teamTimeouts.value = Math.max(0, teamTimeouts.value - 1);
+            // 換半場時暫停次數已經重設過，撤銷前一個半場的暫停不該動到現在的次數
+            if (timeoutPeriodOf(logItem.quarter) === timeoutPeriodOf(currentQuarter.value)) {
+              teamTimeouts.value = Math.max(0, teamTimeouts.value - 1);
+            }
           }
 
           // 從 logs 陣列移除
@@ -2754,11 +2851,23 @@
           showToast("已撤銷該筆特定事件");
         }
 
+        // 產生新球員的 id。id 用過就不再重複使用，即使原本的球員已被刪除：
+        // 賽季數據是用 id 辨認球員，重複使用會把兩個不同的人算成同一位
+        function nextPlayerId() {
+          const team = currentTeam.value;
+          const used = [...players.value, ...(team?.roster || [])].map(p => Number(p.id) || 0);
+          const id = Math.max(0, team?.lastPlayerId || 0, ...used) + 1;
+          if (team) {
+            team.lastPlayerId = id;
+            saveTeams();
+          }
+          return id;
+        }
+
         // 把一位球員加進目前的名單 (呼叫前要先確認背號沒有重複)
         function insertPlayer(number, name) {
-          const maxId = players.value.reduce((max, p) => p.id > max ? p.id : max, 0);
           const newPlayer = {
-            id: maxId + 1,
+            id: nextPlayerId(),
             number,
             name,
             // 場上未滿 5 人時新球員直接上場，否則先放板凳
@@ -2830,6 +2939,12 @@
           if (idx === -1) return;
 
           pushHistoryState();
+          // 記住這個 id 已經用過，之後新增的球員不會拿到同一個
+          const team = currentTeam.value;
+          if (team) {
+            team.lastPlayerId = Math.max(team.lastPlayerId || 0, Number(player.id) || 0);
+            saveTeams();
+          }
           players.value.splice(idx, 1);
           if (selectedCourtPlayer.value?.id === player.id) {
             clearCourtSelection();
@@ -2906,6 +3021,7 @@
           logs.value = data.logs || [];
           history.value = [];
           currentGameCloudId.value = null;
+          isRosterDetached.value = true;
           gameId.value = data.id;
           gameDate.value = data.date || todayString();
           opponentName.value = data.opponentName || "";
@@ -3650,6 +3766,7 @@
         }
 
         return {
+          nextQuarter, quarterLabels: QUARTER_LABELS, isRosterDetached, rememberField, onPlayerNameChange,
           teams, currentTeamId, showTeamModal, isCreatingTeam, teamForm, showRosterPaste, rosterPasteText,
           openTeamModal, startCreatingTeam, createTeam, switchTeam, renameTeam, deleteTeam, addPlayersFromText,
           backupFileInput, exportTeamBackup, importTeamBackup,
