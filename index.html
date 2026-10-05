@@ -68,36 +68,44 @@
     .animate-slide-in {
       animation: slide-in 0.2s ease-out;
     }
+    /* 觸控裝置：取消雙擊縮放造成的點擊延遲與點擊時的灰色反白，並在按下時給縮放回饋 (觸控螢幕沒有 hover) */
+    button {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    button:not(:disabled):active {
+      transform: scale(0.96);
+    }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans min-h-screen select-none overflow-x-hidden">
 
-  <div id="app" class="flex flex-col min-h-screen max-h-screen">
+  <div id="app" class="flex flex-col min-h-screen lg:max-h-screen lg:max-h-dvh">
     
     <!-- 頂端控制列 (Header) -->
-    <header class="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-2 flex items-center justify-between gap-4 shadow-lg shrink-0">
+    <header class="bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-3 sm:px-4 py-2 flex flex-wrap items-center justify-center xl:justify-between gap-x-2 sm:gap-x-4 gap-y-2 shadow-lg shrink-0 sticky top-0 z-40">
       
       <!-- 隊名與節數 -->
-      <div class="flex items-center space-x-3">
-        <div class="flex items-center space-x-2 bg-indigo-950/20 px-2.5 py-1 rounded-xl border border-indigo-900/30">
+      <div class="contents sm:flex sm:items-center sm:gap-3">
+        <div class="flex-1 min-w-0 sm:flex-none flex items-center space-x-2 bg-indigo-950/20 px-2.5 py-1 rounded-xl border border-indigo-900/30">
           <i class="fa-solid fa-shield-halved text-indigo-400 text-base animate-pulse"></i>
           <input 
             type="text" 
             v-model="teamName" 
             @change="saveState" 
-            class="bg-transparent border-b border-transparent hover:border-slate-700 focus:border-indigo-500 focus:outline-none font-black text-base text-slate-100 w-44 transition"
+            class="bg-transparent border-b border-transparent hover:border-slate-700 focus:border-indigo-500 focus:outline-none font-black text-base text-slate-100 w-full min-w-0 sm:w-44 py-1.5 transition"
             title="點擊修改隊名"
           />
         </div>
         
         <!-- 節數選擇器 -->
-        <div class="flex items-center bg-slate-800/80 p-0.5 rounded-lg border border-slate-700">
+        <div class="flex items-center shrink-0 bg-slate-800/80 p-0.5 rounded-lg border border-slate-700">
           <button 
             @click="changeQuarter(q)" 
             v-for="q in quarters" 
             :key="q"
             :class="currentQuarter === q ? 'bg-indigo-600 text-white font-bold' : 'text-slate-400 hover:text-white'"
-            class="px-2.5 py-1 rounded text-xs transition"
+            class="min-w-[36px] sm:min-w-[40px] px-2 sm:px-3 py-2 rounded-md text-sm transition"
           >
             {{ q }}
           </button>
@@ -105,13 +113,13 @@
       </div>
 
       <!-- 大型計時器區域 -->
-      <div class="flex items-center space-x-4">
+      <div class="contents sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-4 sm:gap-y-2">
         <!-- 時間顯示與控制 -->
-        <div class="flex items-center space-x-2">
+        <div class="flex items-center space-x-2 order-1 sm:order-none">
           <!-- 倒數計時大表 -->
           <div 
             @click="isEditingTime = true"
-            class="cursor-pointer text-3xl font-mono font-black tracking-widest text-amber-400 bg-black/75 px-4 py-1 rounded-xl border border-slate-700/80 hover:border-amber-500/50 shadow-glow-amber transition"
+            class="cursor-pointer text-2xl sm:text-3xl font-mono font-black tracking-widest text-amber-400 bg-black/75 px-3 sm:px-4 py-1 rounded-xl border border-slate-700/80 hover:border-amber-500/50 shadow-glow-amber transition"
           >
             <span v-if="!isEditingTime">{{ formattedTime }}</span>
             <input 
@@ -129,7 +137,7 @@
           <button 
             @click="toggleTimer" 
             :class="isTimerRunning ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-glow-amber' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-glow-emerald'" 
-            class="h-10 px-4 rounded-xl font-bold transition flex items-center gap-2 text-sm"
+            class="h-11 px-4 sm:px-5 rounded-xl font-bold transition flex items-center gap-2 text-base whitespace-nowrap shrink-0"
           >
             <i :class="isTimerRunning ? 'fa-solid fa-pause' : 'fa-solid fa-play'"></i> 
             <span>{{ isTimerRunning ? '暫停' : '啟動' }}</span>
@@ -137,38 +145,38 @@
         </div>
 
         <!-- 計時微調 -->
-        <div class="flex items-center bg-slate-800/60 p-1 rounded-xl border border-slate-700/80">
-          <button @click="adjustTime(-10)" class="hover:bg-slate-700 text-slate-300 w-8 h-7 rounded text-xs font-mono font-bold transition">-10s</button>
-          <button @click="adjustTime(-1)" class="hover:bg-slate-700 text-slate-300 w-8 h-7 rounded text-xs font-mono font-bold transition">-1s</button>
+        <div class="flex items-center order-3 sm:order-none bg-slate-800/60 p-1 rounded-xl border border-slate-700/80">
+          <button @click="adjustTime(-10)" class="hover:bg-slate-700 text-slate-300 w-10 sm:w-11 h-10 rounded-lg text-xs font-mono font-bold transition">-10s</button>
+          <button @click="adjustTime(-1)" class="hover:bg-slate-700 text-slate-300 w-10 sm:w-11 h-10 rounded-lg text-xs font-mono font-bold transition">-1s</button>
           <div class="w-px h-4 bg-slate-700 mx-1"></div>
-          <button @click="adjustTime(1)" class="hover:bg-slate-700 text-slate-300 w-8 h-7 rounded text-xs font-mono font-bold transition">+1s</button>
-          <button @click="adjustTime(10)" class="hover:bg-slate-700 text-slate-300 w-8 h-7 rounded text-xs font-mono font-bold transition">+10s</button>
+          <button @click="adjustTime(1)" class="hover:bg-slate-700 text-slate-300 w-10 sm:w-11 h-10 rounded-lg text-xs font-mono font-bold transition">+1s</button>
+          <button @click="adjustTime(10)" class="hover:bg-slate-700 text-slate-300 w-10 sm:w-11 h-10 rounded-lg text-xs font-mono font-bold transition">+10s</button>
         </div>
       </div>
 
-      <!-- 右側輔助控制 (爭球、球衣、音效、Undo、重設) -->
-      <div class="flex items-center space-x-3">
+      <!-- 右側輔助控制 (爭球、音效、Undo、重設) -->
+      <div class="contents sm:flex sm:items-center sm:gap-3">
         <!-- 爭球方向箭頭 -->
-        <div class="flex items-center bg-slate-900/80 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-400 gap-2 shrink-0">
-          <span class="font-semibold">球權:</span>
+        <div class="flex items-center order-2 sm:order-none bg-slate-900/80 border border-slate-800 rounded-xl px-2 sm:px-3 py-1 text-xs text-slate-400 gap-2 shrink-0">
+          <span class="font-semibold hidden sm:inline">球權:</span>
           <div v-if="possessionArrow === 'none'" class="flex items-center space-x-1">
             <button 
               @click="setPossession('W')" 
-              class="bg-indigo-600 hover:bg-indigo-500 border border-indigo-700/50 px-2 py-0.5 rounded text-[10px] text-white font-bold transition shadow-sm"
+              class="bg-indigo-600 hover:bg-indigo-500 border border-indigo-700/50 px-3 py-2 rounded-lg text-xs text-white font-bold transition shadow-sm"
             >
-              淺色 (W)
+              淺色<span class="hidden sm:inline"> (W)</span>
             </button>
             <button 
               @click="setPossession('B')" 
-              class="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2 py-0.5 rounded text-[10px] text-indigo-400 font-bold transition"
+              class="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-2 rounded-lg text-xs text-indigo-400 font-bold transition"
             >
-              深色 (B)
+              深色<span class="hidden sm:inline"> (B)</span>
             </button>
           </div>
           <button 
             v-else
             @click="togglePossession" 
-            class="hover:text-white font-bold transition flex items-center gap-1.5"
+            class="hover:text-white font-bold transition flex items-center gap-1.5 py-2 px-1 text-sm"
             title="點擊進行轉邊"
           >
             <span 
@@ -179,14 +187,14 @@
             >
               {{ possessionArrow === 'W' ? '◄ 淺色 (W)' : '► 深色 (B)' }}
             </span>
-            <i class="fa-solid fa-arrows-rotate text-[10px] text-slate-500 hover:text-slate-300 ml-0.5"></i>
+            <i class="fa-solid fa-arrows-rotate text-xs text-slate-500 hover:text-slate-300 ml-0.5"></i>
           </button>
         </div>
 
         <!-- 音效開關 -->
         <button 
           @click="toggleSound" 
-          class="bg-slate-800 hover:bg-slate-700 border border-slate-700 w-9 h-9 rounded-xl flex items-center justify-center transition"
+          class="order-4 sm:order-none bg-slate-800 hover:bg-slate-700 border border-slate-700 w-11 h-11 rounded-xl flex items-center justify-center transition"
           :class="isSoundEnabled ? 'text-amber-400' : 'text-slate-500'"
           title="切換音效回饋"
         >
@@ -197,16 +205,16 @@
         <button 
           @click="undo" 
           :disabled="history.length === 0" 
-          class="bg-slate-800 hover:bg-slate-700 border border-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800 text-rose-400 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 transition shadow-sm"
+          class="order-5 sm:order-none bg-slate-800 hover:bg-slate-700 border border-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800 text-rose-400 font-bold min-w-[44px] px-3 sm:px-4 h-11 rounded-xl text-sm flex items-center justify-center gap-1.5 transition shadow-sm"
         >
           <i class="fa-solid fa-rotate-left"></i>
-          <span>Undo</span>
+          <span class="hidden sm:inline">Undo</span>
         </button>
 
         <!-- 重設比賽 -->
         <button 
           @click="confirmResetGame" 
-          class="bg-slate-800 hover:bg-rose-950/40 border border-slate-700 hover:border-rose-900/60 text-slate-400 hover:text-rose-400 w-9 h-9 rounded-xl flex items-center justify-center transition"
+          class="order-6 sm:order-none bg-slate-800 hover:bg-rose-950/40 border border-slate-700 hover:border-rose-900/60 text-slate-400 hover:text-rose-400 w-11 h-11 rounded-xl flex items-center justify-center transition"
           title="重設比賽數據"
         >
           <i class="fa-solid fa-trash-can"></i>
@@ -215,13 +223,13 @@
     </header>
 
     <!-- 主區區網格 (Main Layout Grid) -->
-    <main class="flex-1 p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden">
+    <main class="flex-1 min-h-0 p-3 sm:p-4 grid grid-cols-1 lg:grid-cols-12 lg:grid-rows-[minmax(0,1fr)] gap-3 sm:gap-4 lg:overflow-hidden">
       
       <!-- 左半側 (7 欄)：場上球員 & 數據按鍵 (在大螢幕排列在右側) -->
-      <section :class="isBoxscoreMaximized ? 'hidden lg:hidden' : 'lg:col-span-7 lg:order-last'" class="flex flex-col gap-4 overflow-y-auto lg:overflow-visible">
+      <section :class="isBoxscoreMaximized ? 'hidden lg:hidden' : 'lg:col-span-7 lg:order-last'" class="flex flex-col gap-3 sm:gap-4 min-h-0 lg:overflow-y-auto">
         
         <!-- 場上 5 人 (動態鎖定卡片) -->
-        <div class="bg-slate-900/60 backdrop-blur-md rounded-2xl p-4 border border-slate-800/80 shadow-md">
+        <div class="bg-slate-900/60 backdrop-blur-md rounded-2xl p-3 sm:p-4 border border-slate-800/80 shadow-md">
           <div class="flex justify-between items-center mb-3">
             <div class="flex items-center space-x-2">
               <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
@@ -232,14 +240,14 @@
               <span v-if="selectedCourtPlayer" class="text-indigo-400 font-semibold animate-pulse">
                 已選取：#{{ selectedCourtPlayer.number }} {{ selectedCourtPlayer.name }}
               </span>
-              <span v-else class="text-slate-500 font-medium">
+              <span v-else class="hidden sm:inline text-slate-500 font-medium">
                 💡 請先選擇一位場上球員，再點擊下方動作或板凳球員
               </span>
             </div>
           </div>
 
           <!-- 5 人卡片 (縮小版面以配合欄寬並提供大表空間) -->
-          <div class="grid grid-cols-5 gap-2.5">
+          <div class="grid grid-cols-5 gap-1.5 sm:gap-2.5">
             <button 
               v-for="player in onCourtPlayers" 
               :key="player.id"
@@ -249,18 +257,18 @@
                   ? 'border-2 border-indigo-500 shadow-glow-indigo bg-indigo-950/20' 
                   : 'border border-slate-700/60 hover:bg-slate-800/40'
               ]"
-              class="bg-slate-800/50 rounded-xl p-2 text-center flex flex-col items-center transition relative overflow-hidden group"
+              class="bg-slate-800/50 rounded-xl p-1.5 sm:p-2 min-h-[76px] text-center flex flex-col items-center justify-center transition relative overflow-hidden group"
             >
               <!-- 背景裝飾 -->
               <div class="absolute -top-6 -right-6 w-12 h-12 rounded-full opacity-10 group-hover:opacity-20 transition bg-indigo-500"></div>
               
-              <span class="text-xl font-black font-mono tracking-tight" :class="selectedCourtPlayer?.id === player.id ? 'text-indigo-400' : 'text-slate-100'">
+              <span class="text-xl sm:text-2xl font-black font-mono tracking-tight" :class="selectedCourtPlayer?.id === player.id ? 'text-indigo-400' : 'text-slate-100'">
                 #{{ player.number }}
               </span>
-              <span class="text-[11px] font-bold text-slate-200 mt-0.5 truncate w-full">{{ player.name }}</span>
+              <span class="text-xs sm:text-sm font-bold text-slate-200 mt-0.5 truncate w-full">{{ player.name }}</span>
               
               <div class="w-full border-t border-slate-700/50 my-1"></div>
-              <div class="flex justify-between items-center w-full text-[9px] text-slate-400 font-semibold">
+              <div class="flex flex-col sm:flex-row sm:justify-between items-center w-full text-[11px] leading-tight text-slate-400 font-semibold">
                 <span>得分: <strong class="text-slate-200">{{ player.stats.pts }}</strong></span>
                 <span>犯規: <strong :class="player.stats.pf >= 4 ? 'text-rose-500' : 'text-slate-200'">{{ player.stats.pf }}</strong></span>
               </div>
@@ -269,118 +277,118 @@
         </div>
 
         <!-- 攻守動作按鍵區 -->
-        <div class="bg-slate-900/60 backdrop-blur-md rounded-2xl p-4 border border-slate-800/80 shadow-md flex-1 flex flex-col justify-between">
-          <div>
+        <div class="bg-slate-900/60 backdrop-blur-md rounded-2xl p-3 sm:p-4 border border-slate-800/80 shadow-md flex-1 flex flex-col justify-between">
+          <div class="flex flex-col lg:flex-1 lg:min-h-0">
             <div class="flex justify-between items-center mb-3">
               <h2 class="text-xs font-bold tracking-wider text-slate-400 uppercase">⚡ 快速數據登錄</h2>
               <span v-if="!selectedCourtPlayer" class="text-xs text-rose-400/80 font-bold">⚠️ 請先選擇上方球員才能登錄</span>
             </div>
             
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5 auto-rows-fr lg:flex-1 lg:max-h-[540px]">
               <!-- 得分與投籃 -->
               <button 
                 @click="recordAction('FG2_MADE')" 
                 :disabled="!selectedCourtPlayer"
-                class="bg-emerald-700/90 hover:bg-emerald-600 text-white font-bold p-2 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-emerald-700/90 shadow-sm"
+                class="bg-emerald-700/90 hover:bg-emerald-600 text-white font-bold p-2 min-h-[60px] sm:min-h-[76px] rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-emerald-700/90 shadow-sm"
               >
-                <i class="fa-solid fa-basketball text-emerald-400 text-base mb-0.5"></i>
-                <span class="text-sm">2分進球</span>
-                <span class="text-[8px] font-medium opacity-85">得分 +2 | 2PM+1</span>
+                <i class="fa-solid fa-basketball text-emerald-400 text-lg lg:text-xl mb-0.5"></i>
+                <span class="text-base lg:text-lg">2分進球</span>
+                <span class="text-[10px] font-medium opacity-85">得分 +2 | 2PM+1</span>
               </button>
               <button 
                 @click="recordAction('FG2_MISS')" 
                 :disabled="!selectedCourtPlayer"
-                class="bg-slate-800/80 hover:bg-slate-700/80 text-rose-300 border border-rose-950/40 font-bold p-2 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-slate-800/80"
+                class="bg-slate-800/80 hover:bg-slate-700/80 text-rose-300 border border-rose-950/40 font-bold p-2 min-h-[60px] sm:min-h-[76px] rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-slate-800/80"
               >
-                <i class="fa-regular fa-circle-xmark text-rose-400 text-base mb-0.5"></i>
-                <span class="text-sm">2分投失</span>
-                <span class="text-[8px] font-medium opacity-75">2PA+1</span>
+                <i class="fa-regular fa-circle-xmark text-rose-400 text-lg lg:text-xl mb-0.5"></i>
+                <span class="text-base lg:text-lg">2分投失</span>
+                <span class="text-[10px] font-medium opacity-75">2PA+1</span>
               </button>
               <button 
                 @click="recordAction('FG3_MADE')" 
                 :disabled="!selectedCourtPlayer"
-                class="bg-emerald-800/90 hover:bg-emerald-700 text-white font-bold p-2 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-emerald-800/90 shadow-sm"
+                class="bg-emerald-800/90 hover:bg-emerald-700 text-white font-bold p-2 min-h-[60px] sm:min-h-[76px] rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-emerald-800/90 shadow-sm"
               >
-                <i class="fa-solid fa-fire text-amber-400 text-base mb-0.5"></i>
-                <span class="text-sm">3分進球</span>
-                <span class="text-[8px] font-medium opacity-85">得分 +3 | 3PM+1</span>
+                <i class="fa-solid fa-fire text-amber-400 text-lg lg:text-xl mb-0.5"></i>
+                <span class="text-base lg:text-lg">3分進球</span>
+                <span class="text-[10px] font-medium opacity-85">得分 +3 | 3PM+1</span>
               </button>
               <button 
                 @click="recordAction('FG3_MISS')" 
                 :disabled="!selectedCourtPlayer"
-                class="bg-slate-800/80 hover:bg-slate-700/80 text-rose-300 border border-rose-950/40 font-bold p-2 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-slate-800/80"
+                class="bg-slate-800/80 hover:bg-slate-700/80 text-rose-300 border border-rose-950/40 font-bold p-2 min-h-[60px] sm:min-h-[76px] rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-slate-800/80"
               >
-                <i class="fa-regular fa-circle-xmark text-rose-400 text-base mb-0.5"></i>
-                <span class="text-sm">3分投失</span>
-                <span class="text-[8px] font-medium opacity-75">3PA+1</span>
+                <i class="fa-regular fa-circle-xmark text-rose-400 text-lg lg:text-xl mb-0.5"></i>
+                <span class="text-base lg:text-lg">3分投失</span>
+                <span class="text-[10px] font-medium opacity-75">3PA+1</span>
               </button>
 
               <button 
                 @click="recordAction('FT_MADE')" 
                 :disabled="!selectedCourtPlayer"
-                class="bg-teal-700/90 hover:bg-teal-600 text-white font-bold p-2 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-teal-700/90 shadow-sm"
+                class="bg-teal-700/90 hover:bg-teal-600 text-white font-bold p-2 min-h-[60px] sm:min-h-[76px] rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-teal-700/90 shadow-sm"
               >
-                <i class="fa-solid fa-circle-check text-teal-400 text-base mb-0.5"></i>
-                <span class="text-sm">罰球命中</span>
-                <span class="text-[8px] font-medium opacity-85">得分 +1 | FTM+1</span>
+                <i class="fa-solid fa-circle-check text-teal-400 text-lg lg:text-xl mb-0.5"></i>
+                <span class="text-base lg:text-lg">罰球命中</span>
+                <span class="text-[10px] font-medium opacity-85">得分 +1 | FTM+1</span>
               </button>
               <button 
                 @click="recordAction('FT_MISS')" 
                 :disabled="!selectedCourtPlayer"
-                class="bg-slate-800/80 hover:bg-slate-700/80 text-rose-300 border border-rose-950/40 font-bold p-2 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-slate-800/80"
+                class="bg-slate-800/80 hover:bg-slate-700/80 text-rose-300 border border-rose-950/40 font-bold p-2 min-h-[60px] sm:min-h-[76px] rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-slate-800/80"
               >
-                <i class="fa-regular fa-circle text-rose-400 text-base mb-0.5"></i>
-                <span class="text-sm">罰球不中</span>
-                <span class="text-[8px] font-medium opacity-75">FTA+1</span>
+                <i class="fa-regular fa-circle text-rose-400 text-lg lg:text-xl mb-0.5"></i>
+                <span class="text-base lg:text-lg">罰球不中</span>
+                <span class="text-[10px] font-medium opacity-75">FTA+1</span>
               </button>
               
               <!-- 籃板 -->
               <button 
                 @click="recordAction('OREB')" 
                 :disabled="!selectedCourtPlayer"
-                class="bg-sky-700/95 hover:bg-sky-600 text-white font-bold p-2 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-sky-700/95 shadow-sm"
+                class="bg-sky-700/95 hover:bg-sky-600 text-white font-bold p-2 min-h-[60px] sm:min-h-[76px] rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-sky-700/95 shadow-sm"
               >
-                <i class="fa-solid fa-arrow-up-from-bracket text-sky-400 text-base mb-0.5"></i>
-                <span class="text-sm">進攻籃板</span>
-                <span class="text-[8px] font-medium opacity-85">OREB +1</span>
+                <i class="fa-solid fa-arrow-up-from-bracket text-sky-400 text-lg lg:text-xl mb-0.5"></i>
+                <span class="text-base lg:text-lg">進攻籃板</span>
+                <span class="text-[10px] font-medium opacity-85">OREB +1</span>
               </button>
               <button 
                 @click="recordAction('DREB')" 
                 :disabled="!selectedCourtPlayer"
-                class="bg-blue-700/95 hover:bg-blue-600 text-white font-bold p-2 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-blue-700/95 shadow-sm"
+                class="bg-blue-700/95 hover:bg-blue-600 text-white font-bold p-2 min-h-[60px] sm:min-h-[76px] rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-blue-700/95 shadow-sm"
               >
-                <i class="fa-solid fa-shield text-blue-400 text-base mb-0.5"></i>
-                <span class="text-sm">防守籃板</span>
-                <span class="text-[8px] font-medium opacity-85">DREB +1</span>
+                <i class="fa-solid fa-shield text-blue-400 text-lg lg:text-xl mb-0.5"></i>
+                <span class="text-base lg:text-lg">防守籃板</span>
+                <span class="text-[10px] font-medium opacity-85">DREB +1</span>
               </button>
 
               <!-- 其他攻守數據 -->
               <button 
                 @click="recordAction('AST')" 
                 :disabled="!selectedCourtPlayer"
-                class="bg-indigo-700/90 hover:bg-indigo-600 text-white font-bold p-2 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-indigo-700/90 shadow-sm"
+                class="bg-indigo-700/90 hover:bg-indigo-600 text-white font-bold p-2 min-h-[60px] sm:min-h-[76px] rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-indigo-700/90 shadow-sm"
               >
-                <i class="fa-solid fa-handshake-angle text-indigo-400 text-base mb-0.5"></i>
-                <span class="text-sm">助攻 (AST)</span>
-                <span class="text-[8px] font-medium opacity-85">AST +1</span>
+                <i class="fa-solid fa-handshake-angle text-indigo-400 text-lg lg:text-xl mb-0.5"></i>
+                <span class="text-base lg:text-lg">助攻 (AST)</span>
+                <span class="text-[10px] font-medium opacity-85">AST +1</span>
               </button>
               <button 
                 @click="recordAction('STL')" 
                 :disabled="!selectedCourtPlayer"
-                class="bg-amber-700/90 hover:bg-amber-600 text-white font-bold p-2 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-amber-700/90 shadow-sm"
+                class="bg-amber-700/90 hover:bg-amber-600 text-white font-bold p-2 min-h-[60px] sm:min-h-[76px] rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-amber-700/90 shadow-sm"
               >
-                <i class="fa-solid fa-bolt text-amber-400 text-base mb-0.5"></i>
-                <span class="text-sm">抄截 (STL)</span>
-                <span class="text-[8px] font-medium opacity-85">STL +1</span>
+                <i class="fa-solid fa-bolt text-amber-400 text-lg lg:text-xl mb-0.5"></i>
+                <span class="text-base lg:text-lg">抄截 (STL)</span>
+                <span class="text-[10px] font-medium opacity-85">STL +1</span>
               </button>
               <button 
                 @click="recordAction('BLK')" 
                 :disabled="!selectedCourtPlayer"
-                class="bg-violet-700/90 hover:bg-violet-600 text-white font-bold p-2 rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-violet-700/90 shadow-sm"
+                class="bg-violet-700/90 hover:bg-violet-600 text-white font-bold p-2 min-h-[60px] sm:min-h-[76px] rounded-xl transition flex flex-col items-center justify-center gap-0.5 disabled:opacity-30 disabled:hover:bg-violet-700/90 shadow-sm"
               >
-                <i class="fa-solid fa-hand text-violet-400 text-base mb-0.5"></i>
-                <span class="text-sm">阻攻 (BLK)</span>
-                <span class="text-[8px] font-medium opacity-85">BLK +1</span>
+                <i class="fa-solid fa-hand text-violet-400 text-lg lg:text-xl mb-0.5"></i>
+                <span class="text-base lg:text-lg">阻攻 (BLK)</span>
+                <span class="text-[10px] font-medium opacity-85">BLK +1</span>
               </button>
               
               <!-- 負面數據 -->
@@ -388,26 +396,26 @@
                 <button 
                   @click="recordAction('TO')" 
                   :disabled="!selectedCourtPlayer"
-                  class="bg-rose-900/80 hover:bg-rose-800 text-rose-100 border border-rose-900 font-bold rounded-xl transition flex flex-col items-center justify-center text-xs disabled:opacity-30 py-1"
+                  class="bg-rose-900/80 hover:bg-rose-800 text-rose-100 border border-rose-900 font-bold rounded-xl transition flex flex-col items-center justify-center gap-0.5 text-sm disabled:opacity-30 py-1"
                 >
-                  <i class="fa-solid fa-triangle-exclamation text-rose-400 text-[10px] mb-0.5"></i>
+                  <i class="fa-solid fa-triangle-exclamation text-rose-400 text-sm mb-0.5"></i>
                   <span>失誤 (TO)</span>
                 </button>
                 <button 
                   @click="showFoulSelector = true" 
                   :disabled="!selectedCourtPlayer"
-                  class="bg-orange-800/80 hover:bg-orange-700 text-orange-100 border border-orange-800 font-bold rounded-xl transition flex flex-col items-center justify-center text-xs disabled:opacity-30 py-1"
+                  class="bg-orange-800/80 hover:bg-orange-700 text-orange-100 border border-orange-800 font-bold rounded-xl transition flex flex-col items-center justify-center gap-0.5 text-sm disabled:opacity-30 py-1"
                 >
-                  <i class="fa-solid fa-gavel text-orange-400 text-[10px] mb-0.5"></i>
+                  <i class="fa-solid fa-gavel text-orange-400 text-sm mb-0.5"></i>
                   <span>犯規 (PF)</span>
                 </button>
               </div>
-              <div class="grid grid-cols-4 gap-1.5 w-full py-0.5" v-else>
+              <div class="grid grid-cols-4 gap-1.5 w-full" v-else>
                 <button 
                   v-for="type in ['P', 'P1', 'P2', 'P3']"
                   :key="type"
                   @click="recordFoul(type)"
-                  class="bg-amber-600 hover:bg-amber-500 text-white font-black rounded-xl text-sm transition flex items-center justify-center shadow-sm h-9"
+                  class="bg-amber-600 hover:bg-amber-500 text-white font-black rounded-xl text-sm sm:text-base transition flex items-center justify-center shadow-sm min-h-[44px] h-full"
                 >
                   {{ type }}
                 </button>
@@ -417,15 +425,15 @@
           </div>
 
           <!-- 球員快速對調指示 -->
-          <div class="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-400">
+          <div class="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between gap-2 text-xs text-slate-400">
             <span class="flex items-center gap-1.5 text-slate-400">
               <i class="fa-solid fa-circle-info text-indigo-400"></i>
-              <span><strong>如何換人？</strong> 點選上方 [場上球員]，接著在右側 [板凳席] 點選欲換上的球員即可。</span>
+              <span><strong>如何換人？</strong> 點選上方 [場上球員]，接著在 [板凳席] 分頁點選欲換上的球員即可。</span>
             </span>
             <button 
               @click="clearCourtSelection" 
               v-if="selectedCourtPlayer" 
-              class="text-indigo-400 hover:text-indigo-300 font-semibold px-2 py-1 rounded hover:bg-slate-800 transition"
+              class="text-indigo-400 hover:text-indigo-300 font-semibold px-3 py-2 rounded-lg hover:bg-slate-800 transition shrink-0"
             >
               取消選取球員
             </button>
@@ -435,19 +443,19 @@
 
       <!-- 右半側 (5 欄)：球隊得分、板凳/名單/數據大表 分頁、即時事件 Log (在大螢幕排列在左側) -->
       <!-- 使用 lg:order-first 使其在排版上顯示於左邊，並將寬度調為 5 欄以給予數據大表更多橫向空間 -->
-      <section :class="isBoxscoreMaximized ? 'lg:col-span-12' : 'lg:col-span-5 lg:order-first'" class="flex flex-col gap-4 overflow-hidden">
+      <section :class="isBoxscoreMaximized ? 'lg:col-span-12' : 'lg:col-span-5 lg:order-first'" class="flex flex-col gap-3 sm:gap-4 min-h-0 lg:overflow-hidden">
         
         <!-- 比分看板 -->
-        <div class="bg-slate-900/60 backdrop-blur-md rounded-2xl p-4 border border-slate-800/80 shadow-md flex items-center justify-between shrink-0">
+        <div class="bg-slate-900/60 backdrop-blur-md rounded-2xl p-3 sm:p-4 border border-slate-800/80 shadow-md flex items-center justify-between shrink-0">
           <div class="text-left">
-            <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">團隊累計得分</div>
+            <div class="text-xs text-slate-400 font-bold uppercase tracking-wider">團隊累計得分</div>
             <div class="text-4xl font-mono font-black text-amber-400 select-all tracking-tight leading-none my-1">{{ teamTotalPoints }}</div>
           </div>
           
           <div class="h-10 w-px bg-slate-800"></div>
 
           <div class="text-center">
-            <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">團隊犯規 (本節)</div>
+            <div class="text-xs text-slate-400 font-bold uppercase tracking-wider">團隊犯規 (本節)</div>
             <div 
               class="text-2xl font-mono font-bold leading-none mt-1 transition"
               :class="teamFouls >= 4 ? 'text-rose-500 font-black animate-pulse' : 'text-slate-200'"
@@ -460,7 +468,7 @@
 
           <!-- 暫停次數（圈圈滿/空指示圖示與按鈕） -->
           <div class="text-center flex flex-col items-center">
-            <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">暫停次數</div>
+            <div class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">暫停次數</div>
             
             <div class="flex items-center space-x-2.5 mt-0.5">
               <!-- 圈圈滿/空指示器 -->
@@ -469,14 +477,14 @@
                   v-for="i in maxTimeouts" 
                   :key="i"
                   :class="i <= (maxTimeouts - teamTimeouts) ? 'bg-amber-500 shadow-glow-amber border-transparent' : 'bg-slate-950 border border-slate-700'"
-                  class="w-2.5 h-2.5 rounded-full transition-all duration-300"
+                  class="w-3 h-3 rounded-full transition-all duration-300"
                 ></span>
               </div>
               
               <button 
                 @click="recordTimeout" 
                 :disabled="teamTimeouts >= maxTimeouts"
-                class="bg-amber-600/20 hover:bg-amber-500 border border-amber-600/40 hover:border-amber-500 text-amber-300 hover:text-white disabled:opacity-30 disabled:hover:bg-amber-600/20 disabled:hover:text-amber-300 px-2 py-0.5 rounded text-[10px] font-bold transition"
+                class="bg-amber-600/20 hover:bg-amber-500 border border-amber-600/40 hover:border-amber-500 text-amber-300 hover:text-white disabled:opacity-30 disabled:hover:bg-amber-600/20 disabled:hover:text-amber-300 px-3 py-2 rounded-lg text-xs font-bold transition"
               >
                 叫暫停
               </button>
@@ -492,28 +500,28 @@
             <button 
               @click="activeTab = 'bench'" 
               :class="activeTab === 'bench' ? 'border-b-2 border-indigo-500 text-white font-bold bg-slate-900/30' : 'text-slate-400 hover:text-slate-200'"
-              class="flex-1 py-2.5 text-xs text-center transition"
+              class="flex-1 py-3 text-xs sm:text-sm text-center transition whitespace-nowrap"
             >
               <i class="fa-solid fa-couch mr-1"></i> 板凳席 ({{ benchPlayers.length }})
             </button>
             <button 
               @click="activeTab = 'boxscore'" 
               :class="activeTab === 'boxscore' ? 'border-b-2 border-indigo-500 text-white font-bold bg-slate-900/30' : 'text-slate-400 hover:text-slate-200'"
-              class="flex-1 py-2.5 text-xs text-center transition"
+              class="flex-1 py-3 text-xs sm:text-sm text-center transition whitespace-nowrap"
             >
               <i class="fa-solid fa-table-list mr-1"></i> 數據大表
             </button>
             <button 
               @click="activeTab = 'roster'" 
               :class="activeTab === 'roster' ? 'border-b-2 border-indigo-500 text-white font-bold bg-slate-900/30' : 'text-slate-400 hover:text-slate-200'"
-              class="flex-1 py-2.5 text-xs text-center transition"
+              class="flex-1 py-3 text-xs sm:text-sm text-center transition whitespace-nowrap"
             >
               <i class="fa-solid fa-users-gear mr-1"></i> 名單管理
             </button>
             <button 
               @click="activeTab = 'cloud'" 
               :class="activeTab === 'cloud' ? 'border-b-2 border-indigo-500 text-white font-bold bg-slate-900/30' : 'text-slate-400 hover:text-slate-200'"
-              class="flex-1 py-2.5 text-xs text-center transition"
+              class="flex-1 py-3 text-xs sm:text-sm text-center transition whitespace-nowrap"
             >
               <i :class="syncError ? 'fa-solid fa-triangle-exclamation text-rose-400' : 'fa-solid fa-cloud'" class="mr-1"></i> 雲端同步
             </button>
@@ -532,14 +540,14 @@
                   v-for="player in benchPlayers" 
                   :key="player.id"
                   @click="handleBenchPlayerClick(player)"
-                  class="bg-slate-800/40 hover:bg-slate-800 border border-slate-700/50 hover:border-indigo-500/50 text-left p-2.5 rounded-xl flex items-center justify-between transition group"
+                  class="bg-slate-800/40 hover:bg-slate-800 border border-slate-700/50 hover:border-indigo-500/50 text-left p-3 min-h-[48px] rounded-xl flex items-center justify-between transition group"
                 >
                   <div class="flex items-center space-x-2">
-                    <span class="font-mono font-bold text-slate-400 group-hover:text-slate-200">#{{ player.number }}</span>
-                    <span class="text-xs font-bold text-slate-300 group-hover:text-white truncate max-w-[80px]">{{ player.name }}</span>
+                    <span class="font-mono font-bold text-base text-slate-400 group-hover:text-slate-200">#{{ player.number }}</span>
+                    <span class="text-sm font-bold text-slate-300 group-hover:text-white truncate max-w-[90px]">{{ player.name }}</span>
                   </div>
                   <!-- 當場上有選取球員時，顯示替換提示 -->
-                  <div class="text-[10px] px-1.5 py-0.5 rounded transition"
+                  <div class="text-xs px-1.5 py-0.5 rounded transition"
                     :class="selectedCourtPlayer ? 'bg-indigo-600/30 text-indigo-300 font-bold group-hover:bg-indigo-600 group-hover:text-white' : 'bg-slate-900/50 text-slate-500'"
                   >
                     {{ selectedCourtPlayer ? '替換' : '板凳' }}
@@ -563,15 +571,16 @@
                         ? tab.activeClass 
                         : 'text-slate-400 border-transparent hover:text-white'
                     ]"
-                    class="flex-1 py-1 rounded-lg text-[10px] transition text-center border font-semibold"
+                    class="flex-1 py-2 rounded-lg text-xs transition text-center border font-semibold whitespace-nowrap"
+                    :title="tab.label"
                   >
-                    {{ tab.label }}
+                    {{ tab.short }}
                   </button>
                 </div>
                 <!-- 放大/縮小按鈕 (桌機版專用，可展開寬度) -->
                 <button 
                   @click="isBoxscoreMaximized = !isBoxscoreMaximized"
-                  class="hidden lg:flex bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white w-8 h-8 rounded-lg items-center justify-center transition shrink-0"
+                  class="hidden lg:flex bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white w-10 h-10 rounded-lg items-center justify-center transition shrink-0"
                   :title="isBoxscoreMaximized ? '還原視窗' : '放大表格'"
                 >
                   <i :class="isBoxscoreMaximized ? 'fa-solid fa-compress' : 'fa-solid fa-expand'"></i>
@@ -580,18 +589,18 @@
 
               <!-- 數據表格 -->
               <div class="overflow-x-auto border border-slate-800 rounded-2xl flex-1 bg-slate-900/25">
-                <table class="w-full text-[10px] text-left border-collapse font-mono">
+                <table class="w-full text-xs text-left border-collapse font-mono whitespace-nowrap">
                   <thead>
                     <tr class="bg-slate-900/80 text-slate-400 border-b border-slate-800 font-sans">
-                      <th class="p-3 font-sans font-bold tracking-wider uppercase border-r border-slate-800/40">背號/姓名</th>
-                      <th class="p-3 text-center font-bold tracking-wider uppercase border-r border-slate-800/40">時間</th>
-                      <th class="p-3 text-center font-bold tracking-wider uppercase border-r border-slate-800/40">得分</th>
-                      <th class="p-3 text-center font-bold tracking-wider uppercase">2分</th>
-                      <th class="p-3 text-center font-bold tracking-wider uppercase">3分</th>
-                      <th class="p-3 text-center font-bold tracking-wider uppercase border-r border-slate-800/40">罰球</th>
-                      <th class="p-3 text-center font-bold tracking-wider uppercase border-r border-slate-800/40">助攻</th>
-                      <th class="p-3 text-center font-bold tracking-wider uppercase border-r border-slate-800/40">籃板</th>
-                      <th class="p-3 text-center font-bold tracking-wider uppercase">其他</th>
+                      <th class="px-2 py-2 font-sans font-bold tracking-wider uppercase border-r border-slate-800/40 sticky left-0 z-10 bg-slate-900">背號/姓名</th>
+                      <th class="px-2 py-2 text-center font-bold tracking-wider uppercase border-r border-slate-800/40">時間</th>
+                      <th class="px-2 py-2 text-center font-bold tracking-wider uppercase border-r border-slate-800/40">得分</th>
+                      <th class="px-2 py-2 text-center font-bold tracking-wider uppercase">2分</th>
+                      <th class="px-2 py-2 text-center font-bold tracking-wider uppercase">3分</th>
+                      <th class="px-2 py-2 text-center font-bold tracking-wider uppercase border-r border-slate-800/40">罰球</th>
+                      <th class="px-2 py-2 text-center font-bold tracking-wider uppercase border-r border-slate-800/40">助攻</th>
+                      <th class="px-2 py-2 text-center font-bold tracking-wider uppercase border-r border-slate-800/40">籃板</th>
+                      <th class="px-2 py-2 text-center font-bold tracking-wider uppercase">其他</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-slate-800/50">
@@ -602,27 +611,27 @@
                       :class="p.isOnCourt ? 'bg-indigo-950/15 border-l-2 border-indigo-500' : ''"
                     >
                       <!-- 背號姓名 -->
-                      <td class="p-3 font-sans border-r border-slate-800/40">
+                      <td class="px-2 py-2 font-sans border-r border-slate-800/40 sticky left-0 z-10 bg-slate-900">
                         <div class="flex items-center space-x-2">
-                          <span class="bg-slate-950 px-1.5 py-0.5 rounded text-[10px] font-bold font-mono border border-slate-800 text-indigo-400">#{{ p.number }}</span>
-                          <span class="text-slate-200 font-bold truncate max-w-[65px]" :class="p.isOnCourt ? 'text-indigo-300' : ''">{{ p.name }}</span>
-                          <span v-if="p.isOnCourt" class="text-[8px] bg-indigo-500/20 text-indigo-300 px-1 rounded font-bold scale-90">場上</span>
+                          <span class="bg-slate-950 px-1.5 py-0.5 rounded text-xs font-bold font-mono border border-slate-800 text-indigo-400">#{{ p.number }}</span>
+                          <span class="text-slate-200 font-bold truncate max-w-[80px]" :class="p.isOnCourt ? 'text-indigo-300' : ''">{{ p.name }}</span>
+                          <span v-if="p.isOnCourt" class="text-[10px] bg-indigo-500/20 text-indigo-300 px-1 rounded font-bold">場上</span>
                         </div>
                       </td>
                       
                       <!-- 時間 -->
-                      <td class="p-3 text-center font-mono border-r border-slate-800/40" :class="sec === 0 ? 'text-slate-600' : 'text-slate-300'">
+                      <td class="px-2 py-2 text-center font-mono border-r border-slate-800/40" :class="sec === 0 ? 'text-slate-600' : 'text-slate-300'">
                         {{ formatMinutes(sec) }}
                       </td>
                       
                       <!-- 得分 (若在總表，則顯示彩色分節 breakdown) -->
-                      <td class="p-3 text-center font-mono border-r border-slate-800/40">
+                      <td class="px-2 py-2 text-center font-mono border-r border-slate-800/40">
                         <div class="flex flex-col items-center">
-                          <span :class="s.pts === 0 ? 'text-slate-600 font-normal' : (boxscoreQuarterTab === 'total' ? 'text-amber-400 font-black text-xs' : 'text-slate-100 font-bold')">
+                          <span :class="s.pts === 0 ? 'text-slate-600 font-normal' : (boxscoreQuarterTab === 'total' ? 'text-amber-400 font-black text-sm' : 'text-slate-100 font-bold')">
                             {{ s.pts }}
                           </span>
                           <!-- 得分 breakdown -->
-                          <span v-if="boxscoreQuarterTab === 'total' && s.pts > 0" class="text-[8px] scale-90 text-slate-500 font-semibold mt-0.5 flex items-center gap-0.5 select-none">
+                          <span v-if="boxscoreQuarterTab === 'total' && s.pts > 0" class="text-[10px] text-slate-500 font-semibold mt-0.5 flex items-center gap-0.5 select-none">
                             <span class="text-sky-400">{{ p.statsByQuarter?.[1]?.pts ?? 0 }}</span>·<span class="text-rose-500">{{ p.statsByQuarter?.[2]?.pts ?? 0 }}</span>·<span class="text-emerald-400">{{ p.statsByQuarter?.[3]?.pts ?? 0 }}</span>·<span class="text-slate-300">{{ p.statsByQuarter?.[4]?.pts ?? 0 }}</span>
                             <span v-if="p.statsByQuarter?.['OT']?.pts > 0" class="text-amber-500">·{{ p.statsByQuarter?.['OT']?.pts }}</span>
                           </span>
@@ -630,39 +639,39 @@
                       </td>
                       
                       <!-- 2分 -->
-                      <td class="p-3 text-center font-mono" :class="s.fg2a === 0 ? 'text-slate-600' : 'text-slate-200 font-bold'">
+                      <td class="px-2 py-2 text-center font-mono" :class="s.fg2a === 0 ? 'text-slate-600' : 'text-slate-200 font-bold'">
                         {{ s.fg2m }}-{{ s.fg2a }}
                       </td>
                       
                       <!-- 3分 -->
-                      <td class="p-3 text-center font-mono" :class="s.fg3a === 0 ? 'text-slate-600' : 'text-slate-200 font-bold'">
+                      <td class="px-2 py-2 text-center font-mono" :class="s.fg3a === 0 ? 'text-slate-600' : 'text-slate-200 font-bold'">
                         {{ s.fg3m }}-{{ s.fg3a }}
                       </td>
                       
                       <!-- 罰球 -->
-                      <td class="p-3 text-center font-mono border-r border-slate-800/40" :class="s.fta === 0 ? 'text-slate-600' : 'text-slate-200 font-bold'">
+                      <td class="px-2 py-2 text-center font-mono border-r border-slate-800/40" :class="s.fta === 0 ? 'text-slate-600' : 'text-slate-200 font-bold'">
                         {{ s.ftm }}-{{ s.fta }}
                       </td>
                       
                       <!-- 助攻 -->
-                      <td class="p-3 text-center font-mono border-r border-slate-800/40" :class="s.ast === 0 ? 'text-slate-600' : 'text-indigo-400 font-black'">
+                      <td class="px-2 py-2 text-center font-mono border-r border-slate-800/40" :class="s.ast === 0 ? 'text-slate-600' : 'text-indigo-400 font-black'">
                         {{ s.ast }}
                       </td>
                       
                       <!-- 籃板 -->
-                      <td class="p-3 text-center font-mono border-r border-slate-800/40" :class="(s.oreb + s.dreb) === 0 ? 'text-slate-600' : 'text-sky-400 font-black'">
+                      <td class="px-2 py-2 text-center font-mono border-r border-slate-800/40" :class="(s.oreb + s.dreb) === 0 ? 'text-slate-600' : 'text-sky-400 font-black'">
                         <div>
                           <span>{{ s.oreb + s.dreb }}</span>
-                          <span class="text-[8px] text-slate-500 block scale-90 select-none" v-if="(s.oreb + s.dreb) > 0">
+                          <span class="text-[10px] text-slate-500 block select-none" v-if="(s.oreb + s.dreb) > 0">
                             ({{ s.oreb }}/{{ s.dreb }})
                           </span>
                         </div>
                       </td>
                       
                       <!-- 其他 / 犯規 (顯示具體犯規代號，並在總表顯示彩色分節犯規記號) -->
-                      <td class="p-3 text-center text-slate-400 leading-normal font-sans">
+                      <td class="px-2 py-2 text-center text-slate-400 leading-normal font-sans">
                         <div class="flex flex-col items-center">
-                          <div class="flex items-center space-x-1.5 text-[9px] font-mono">
+                          <div class="flex items-center space-x-1.5 text-[11px] font-mono">
                             <span :class="s.stl === 0 ? 'text-slate-600' : 'text-amber-400 font-bold'">S:{{ s.stl }}</span>
                             <span class="text-slate-800">|</span>
                             <span :class="s.blk === 0 ? 'text-slate-600' : 'text-violet-400 font-bold'">B:{{ s.blk }}</span>
@@ -670,10 +679,10 @@
                             <span :class="s.to === 0 ? 'text-slate-600' : 'text-rose-400 font-bold'">T:{{ s.to }}</span>
                           </div>
                           <div class="mt-1 font-mono">
-                            <span class="font-bold" :class="s.pf >= 4 ? 'text-rose-500 font-black animate-pulse text-xs' : (s.pf === 0 && boxscoreQuarterTab === 'total' ? 'text-slate-600 font-normal' : 'text-slate-300')">
+                            <span class="font-bold" :class="s.pf >= 4 ? 'text-rose-500 font-black animate-pulse text-sm' : (s.pf === 0 && boxscoreQuarterTab === 'total' ? 'text-slate-600 font-normal' : 'text-slate-300')">
                               F:{{ boxscoreQuarterTab === 'total' ? s.pf : formatQuarterFouls(p, boxscoreQuarterTab) }}
                             </span>
-                            <span v-if="boxscoreQuarterTab === 'total' && s.pf > 0" class="text-[8px] scale-90 text-slate-500 ml-1 font-semibold block mt-0.5 select-none">
+                            <span v-if="boxscoreQuarterTab === 'total' && s.pf > 0" class="text-[10px] text-slate-500 ml-1 font-semibold block mt-0.5 select-none">
                               (<span class="text-sky-400">{{ formatQuarterFouls(p, 1) }}</span>·<span class="text-rose-500">{{ formatQuarterFouls(p, 2) }}</span>·<span class="text-emerald-400">{{ formatQuarterFouls(p, 3) }}</span>·<span class="text-slate-300">{{ formatQuarterFouls(p, 4) }}</span><span v-if="formatQuarterFouls(p, 'OT') !== '-'" class="text-amber-500">·{{ formatQuarterFouls(p, 'OT') }}</span>)
                             </span>
                           </div>
@@ -688,20 +697,20 @@
               <div class="flex space-x-2 pt-2 shrink-0 border-t border-slate-800/40">
                 <button 
                   @click="copyTextReport" 
-                  class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold py-2 rounded-xl transition flex items-center justify-center gap-1.5"
+                  class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold py-3 rounded-xl transition flex items-center justify-center gap-1.5"
                 >
                   <i class="fa-solid fa-copy"></i> 複製文字報告
                 </button>
                 <button 
                   @click="exportExcel" 
                   :disabled="isExportingExcel"
-                  class="flex-1 bg-emerald-700 hover:bg-emerald-600 border border-emerald-600 text-white text-xs font-semibold py-2 rounded-xl transition flex items-center justify-center gap-1.5 disabled:opacity-60"
+                  class="flex-1 bg-emerald-700 hover:bg-emerald-600 border border-emerald-600 text-white text-xs font-semibold py-3 rounded-xl transition flex items-center justify-center gap-1.5 disabled:opacity-60"
                 >
                   <i :class="isExportingExcel ? 'fa-solid fa-circle-notch animate-spin' : 'fa-solid fa-file-excel'"></i> 下載 Excel
                 </button>
                 <button 
                   @click="exportCSV" 
-                  class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold py-2 rounded-xl transition flex items-center justify-center gap-1.5"
+                  class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold py-3 rounded-xl transition flex items-center justify-center gap-1.5"
                 >
                   <i class="fa-solid fa-file-csv"></i> 下載 CSV
                 </button>
@@ -713,28 +722,28 @@
               <!-- 新增球員表單 -->
               <form @submit.prevent="addNewPlayer" class="bg-slate-950/40 p-3 rounded-xl border border-slate-800 flex items-center space-x-2">
                 <div class="w-16">
-                  <label class="text-[9px] text-slate-500 block mb-0.5">背號</label>
+                  <label class="text-[11px] text-slate-500 block mb-0.5">背號</label>
                   <input 
                     type="text" 
                     v-model="newPlayerNumber" 
                     placeholder="背號" 
-                    class="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-center text-xs text-white focus:border-indigo-500 focus:outline-none"
+                    class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-center text-sm text-white focus:border-indigo-500 focus:outline-none"
                     required
                   >
                 </div>
                 <div class="flex-1">
-                  <label class="text-[9px] text-slate-500 block mb-0.5">球員姓名</label>
+                  <label class="text-[11px] text-slate-500 block mb-0.5">球員姓名</label>
                   <input 
                     type="text" 
                     v-model="newPlayerName" 
                     placeholder="球員姓名" 
-                    class="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                    class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
                     required
                   >
                 </div>
                 <button 
                   type="submit" 
-                  class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold h-9 w-9 rounded-lg flex items-center justify-center transition shrink-0 self-end"
+                  class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold h-11 w-11 rounded-lg flex items-center justify-center transition shrink-0 self-end"
                 >
                   <i class="fa-solid fa-plus"></i>
                 </button>
@@ -742,18 +751,18 @@
 
               <!-- 還原預設名單按鈕 -->
               <div class="flex justify-between items-center px-1">
-                <span class="text-[10px] text-slate-400 font-bold">🏃‍♀️ 球員列表</span>
+                <span class="text-xs text-slate-400 font-bold">🏃‍♀️ 球員列表</span>
                 <button 
                   type="button"
                   @click="confirmRestoreDefaultRoster" 
-                  class="bg-slate-800 hover:bg-rose-950/40 border border-slate-800 hover:border-rose-900/50 text-slate-300 hover:text-rose-300 text-[9px] font-bold px-2 py-1 rounded transition flex items-center gap-1"
+                  class="bg-slate-800 hover:bg-rose-950/40 border border-slate-800 hover:border-rose-900/50 text-slate-300 hover:text-rose-300 text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1"
                 >
-                  <i class="fa-solid fa-rotate-left text-[8px]"></i> 還原東吳預設名單
+                  <i class="fa-solid fa-rotate-left text-[10px]"></i> 還原東吳預設名單
                 </button>
               </div>
 
               <!-- 球員列表與狀態控制 -->
-              <div class="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
+              <div class="space-y-1.5">
                 <div 
                   v-for="p in players" 
                   :key="p.id" 
@@ -765,14 +774,14 @@
                       type="text" 
                       v-model="p.number" 
                       @change="onPlayerNumberChange" 
-                      class="bg-transparent border-b border-transparent hover:border-slate-700 focus:border-indigo-500 focus:outline-none text-xs text-slate-200 font-bold font-mono w-8 text-center"
+                      class="bg-transparent border-b border-transparent hover:border-slate-700 focus:border-indigo-500 focus:outline-none text-sm text-slate-200 font-bold font-mono w-10 py-1.5 text-center"
                       title="點擊修改背號"
                     />
                     <input 
                       type="text" 
                       v-model="p.name" 
                       @change="saveState" 
-                      class="bg-transparent border-b border-transparent hover:border-slate-700 focus:border-indigo-500 focus:outline-none text-xs text-white font-semibold w-24"
+                      class="bg-transparent border-b border-transparent hover:border-slate-700 focus:border-indigo-500 focus:outline-none text-sm text-white font-semibold w-28 py-1.5"
                       title="點擊修改姓名"
                     />
                   </div>
@@ -782,7 +791,7 @@
                     <button 
                       @click="togglePlayerCourtStatus(p)" 
                       :class="p.isOnCourt ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-600/40 font-bold' : 'bg-slate-900/50 text-slate-400 border border-slate-800'"
-                      class="text-[9px] px-2 py-1 rounded-md transition"
+                      class="text-xs px-3 py-2 rounded-lg transition whitespace-nowrap"
                     >
                       {{ p.isOnCourt ? '場上 5 人' : '板凳' }}
                     </button>
@@ -790,15 +799,15 @@
                     <!-- 刪除按鈕 (防呆：有數據者不可直接刪除) -->
                     <button 
                       @click="removePlayer(p)" 
-                      class="text-slate-500 hover:text-rose-400 p-1 rounded hover:bg-slate-800 transition"
+                      class="text-slate-500 hover:text-rose-400 w-9 h-9 flex items-center justify-center rounded-lg hover:bg-slate-800 transition"
                       title="刪除球員"
                     >
-                      <i class="fa-solid fa-trash-can text-xs"></i>
+                      <i class="fa-solid fa-trash-can text-sm"></i>
                     </button>
                   </div>
                 </div>
               </div>
-              <p class="text-[9px] text-slate-500 leading-normal">
+              <p class="text-[11px] text-slate-500 leading-normal">
                 * 點擊球員姓名可直接編輯修改。<br>
                 * 場上必須維持剛好 5 人以確保上場時間及攻守操作的正確記錄。
               </p>
@@ -813,32 +822,32 @@
                     <i class="fa-solid fa-circle-exclamation text-amber-500 animate-pulse"></i>
                     <span>串接 Supabase 雲端資料庫</span>
                   </div>
-                  <p class="text-[10px] text-slate-500 leading-normal">
+                  <p class="text-xs text-slate-500 leading-normal">
                     設定您的 Supabase 專案 API，即可將攻守紀錄同步儲存至雲端，並支援跨裝置載入與多人協作。
                   </p>
                   
                   <div>
-                    <label class="text-[9px] text-slate-400 block mb-0.5">Supabase URL</label>
+                    <label class="text-[11px] text-slate-400 block mb-0.5">Supabase URL</label>
                     <input 
                       type="text" 
                       v-model="supabaseUrl" 
                       placeholder="https://xxxx.supabase.co" 
-                      class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:border-indigo-500 focus:outline-none font-sans"
+                      class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none font-sans"
                     >
                   </div>
                   <div>
-                    <label class="text-[9px] text-slate-400 block mb-0.5">Supabase Anon Key (公鑰)</label>
+                    <label class="text-[11px] text-slate-400 block mb-0.5">Supabase Anon Key (公鑰)</label>
                     <input 
                       type="password" 
                       v-model="supabaseKey" 
                       placeholder="eyJhbGciOiJIUzI1Ni..." 
-                      class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:border-indigo-500 focus:outline-none font-mono"
+                      class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none font-mono"
                     >
                   </div>
                   
                   <button 
                     @click="testSupabaseConnection(false)" 
-                    class="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2 rounded-xl transition flex items-center justify-center gap-1.5"
+                    class="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold py-3 rounded-xl transition flex items-center justify-center gap-1.5"
                   >
                     <i class="fa-solid fa-link"></i> 測試並連接
                   </button>
@@ -855,7 +864,7 @@
                     </div>
                     <button 
                       @click="disconnectSupabase" 
-                      class="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold transition"
+                      class="text-xs text-indigo-400 hover:text-indigo-300 font-semibold transition py-2 px-2"
                     >
                       重新設定
                     </button>
@@ -865,7 +874,7 @@
                     <button 
                       @click="saveToSupabase(false)" 
                       :disabled="isSupabaseSyncing"
-                      class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 shadow-glow-emerald"
+                      class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold py-3 rounded-xl transition flex items-center justify-center gap-1.5 shadow-glow-emerald"
                     >
                       <i v-if="isSupabaseSyncing" class="fa-solid fa-circle-notch animate-spin"></i>
                       <i v-else class="fa-solid fa-cloud-arrow-up"></i>
@@ -873,7 +882,7 @@
                     </button>
 
                     <!-- 自動同步開關 -->
-                    <label class="flex items-center space-x-2 text-[10px] text-slate-400 select-none py-1 cursor-pointer">
+                    <label class="flex items-center space-x-2 text-xs text-slate-400 select-none py-1 cursor-pointer">
                       <input 
                         type="checkbox" 
                         v-model="isAutoSyncEnabled" 
@@ -884,10 +893,10 @@
                     </label>
 
                     <!-- 同步狀態：失敗時提醒手動重傳，成功時顯示最近一次上傳時間 -->
-                    <p v-if="syncError" class="text-[10px] text-rose-400 font-bold leading-normal">
+                    <p v-if="syncError" class="text-xs text-rose-400 font-bold leading-normal">
                       <i class="fa-solid fa-triangle-exclamation mr-0.5"></i> 最近一次上傳失敗，資料仍保存在本機。網路恢復後請按上方按鈕重新上傳。
                     </p>
-                    <p v-else-if="lastSyncedAt" class="text-[10px] text-slate-500">
+                    <p v-else-if="lastSyncedAt" class="text-xs text-slate-500">
                       <i class="fa-solid fa-circle-check text-emerald-500 mr-0.5"></i> 上次成功上傳：{{ lastSyncedAt }}
                     </p>
                   </div>
@@ -896,14 +905,14 @@
                 <!-- 雲端歷史紀錄列表 -->
                 <div class="space-y-2">
                   <div class="flex items-center justify-between">
-                    <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">🗂️ 雲端歷史賽事</h3>
-                    <button @click="fetchCloudGames(false)" class="text-[9px] text-indigo-400 hover:text-indigo-300 transition">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">🗂️ 雲端歷史賽事</h3>
+                    <button @click="fetchCloudGames(false)" class="text-xs text-indigo-400 hover:text-indigo-300 transition py-2 px-2">
                       <i class="fa-solid fa-arrows-rotate mr-0.5"></i> 重新整理
                     </button>
                   </div>
                   
-                  <div class="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
-                    <div v-if="supabaseGamesList.length === 0" class="text-center py-6 text-[10px] text-slate-600">
+                  <div class="space-y-1.5 max-h-[260px] overflow-y-auto pr-1">
+                    <div v-if="supabaseGamesList.length === 0" class="text-center py-6 text-xs text-slate-600">
                       雲端資料庫尚無已儲存的賽事。
                     </div>
                     <div 
@@ -914,25 +923,25 @@
                     >
                       <div class="text-left flex-1 min-w-0 pr-2">
                         <div class="flex items-center space-x-1">
-                          <span class="text-[10px] font-bold text-slate-200 truncate block max-w-[90px]">{{ game.team_name }}</span>
-                          <span class="text-[8px] bg-slate-800 text-slate-400 px-1 rounded scale-90">{{ game.quarter }}</span>
+                          <span class="text-xs font-bold text-slate-200 truncate block max-w-[140px]">{{ game.team_name }}</span>
+                          <span class="text-[10px] bg-slate-800 text-slate-400 px-1 rounded">{{ game.quarter }}</span>
                         </div>
-                        <span class="text-[8px] text-slate-500 font-mono block mt-0.5">{{ game.game_date }} | {{ game.score }} 分</span>
+                        <span class="text-[10px] text-slate-500 font-mono block mt-0.5">{{ game.game_date }} | {{ game.score }} 分</span>
                       </div>
                       
                       <div class="flex items-center space-x-1.5">
                         <button 
                           @click="loadGameFromCloud(game.id)" 
-                          class="bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white text-[9px] font-bold px-2 py-0.5 rounded transition"
+                          class="bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white text-xs font-bold px-3 py-2 rounded-lg transition"
                         >
                           載入
                         </button>
                         <button 
                           @click="deleteGameFromCloud(game.id)" 
-                          class="text-slate-600 hover:text-rose-400 p-1 rounded transition"
+                          class="text-slate-500 hover:text-rose-400 w-9 h-9 flex items-center justify-center rounded-lg transition"
                           title="從雲端刪除此紀錄"
                         >
-                          <i class="fa-solid fa-trash-can text-[9px]"></i>
+                          <i class="fa-solid fa-trash-can text-sm"></i>
                         </button>
                       </div>
                     </div>
@@ -945,20 +954,20 @@
           </div>
         </div>
         <!-- 即時事件 Log (當打開數據大表時隱藏，讓大表擁有最大高度) -->
-        <div v-if="activeTab !== 'boxscore'" class="bg-slate-900/60 backdrop-blur-md rounded-2xl p-4 border border-slate-800/80 shadow-md h-[180px] shrink-0 flex flex-col overflow-hidden">
+        <div v-if="activeTab !== 'boxscore'" class="bg-slate-900/60 backdrop-blur-md rounded-2xl p-3 sm:p-4 border border-slate-800/80 shadow-md h-[240px] lg:h-[190px] shrink-0 flex flex-col overflow-hidden">
           <h2 class="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider flex items-center justify-between">
             <span>📋 即時事件 Log</span>
-            <span class="text-[9px] text-slate-500 font-mono">最新在最上</span>
+            <span class="text-[11px] text-slate-500 font-mono">最新在最上</span>
           </h2>
           
-          <div class="space-y-1.5 overflow-y-auto flex-1 text-[11px] pr-1">
+          <div class="space-y-1.5 overflow-y-auto flex-1 text-xs pr-1">
             <div v-if="logs.length === 0" class="text-center py-8 text-xs text-slate-600">
               尚無任何攻守紀錄事件。
             </div>
             <div 
               v-for="log in logs" 
               :key="log.id" 
-              class="bg-slate-800/40 p-2 rounded-lg flex justify-between items-center border-l-2"
+              class="bg-slate-800/40 pl-2 pr-1 py-1 rounded-lg flex justify-between items-center gap-2 border-l-2"
               :style="{ borderLeftColor: log.color || '#6366f1' }"
             >
               <div>
@@ -970,10 +979,10 @@
               <!-- 快速撤銷單筆 Log -->
               <button 
                 @click="deleteSpecificLog(log)" 
-                class="text-slate-500 hover:text-rose-400 hover:bg-slate-800 p-0.5 rounded transition"
+                class="text-slate-500 hover:text-rose-400 hover:bg-slate-800 w-9 h-9 shrink-0 flex items-center justify-center rounded-lg transition"
                 title="撤銷此動作"
               >
-                <i class="fa-solid fa-xmark text-[10px]"></i>
+                <i class="fa-solid fa-xmark text-sm"></i>
               </button>
             </div>
           </div>
@@ -1023,7 +1032,7 @@
     <div
       v-if="toastMessage"
       :class="toastType === 'error' ? 'bg-rose-600' : 'bg-slate-700 border border-slate-600'"
-      class="fixed bottom-6 right-6 text-white font-bold px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 z-50 animate-slide-in"
+      class="fixed bottom-4 left-4 right-4 sm:left-auto sm:bottom-6 sm:right-6 text-white font-bold px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 z-50 animate-slide-in"
     >
       <i :class="toastType === 'error' ? 'fa-solid fa-circle-xmark' : 'fa-solid fa-circle-check text-emerald-400'"></i>
       <span class="text-sm">{{ toastMessage }}</span>
@@ -1127,12 +1136,12 @@
         // 數據大表分節分頁
         const boxscoreQuarterTab = ref("total"); // 預設顯示總表
         const boxscoreTabs = [
-          { value: 1, label: "第一節 (Q1)", activeClass: "bg-sky-500 text-white font-bold" },
-          { value: 2, label: "第二節 (Q2)", activeClass: "bg-rose-500 text-white font-bold" },
-          { value: 3, label: "第三節 (Q3)", activeClass: "bg-emerald-500 text-white font-bold" },
-          { value: 4, label: "第四節 (Q4)", activeClass: "bg-slate-300 text-slate-950 font-bold" },
-          { value: "OT", label: "延長賽 (OT)", activeClass: "bg-amber-500 text-slate-950 font-bold" },
-          { value: "total", label: "總表", activeClass: "bg-indigo-600 text-white font-bold" }
+          { value: 1, label: "第一節 (Q1)", short: "Q1", activeClass: "bg-sky-500 text-white font-bold" },
+          { value: 2, label: "第二節 (Q2)", short: "Q2", activeClass: "bg-rose-500 text-white font-bold" },
+          { value: 3, label: "第三節 (Q3)", short: "Q3", activeClass: "bg-emerald-500 text-white font-bold" },
+          { value: 4, label: "第四節 (Q4)", short: "Q4", activeClass: "bg-slate-300 text-slate-950 font-bold" },
+          { value: "OT", label: "延長賽 (OT)", short: "OT", activeClass: "bg-amber-500 text-slate-950 font-bold" },
+          { value: "total", label: "總表", short: "總表", activeClass: "bg-indigo-600 text-white font-bold" }
         ];
 
         // Supabase 雲端儲存相關 state
