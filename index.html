@@ -8,14 +8,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Outfit:wght@300;400;500;700;900&display=swap" rel="stylesheet">
-  <!-- Vue 3 Global -->
-  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <!-- 外部函式庫都鎖定確切版本，避免 CDN 更新後行為改變。升級時 sw.js 裡的預先快取清單要一起改 -->
+  <!-- Vue 3 Global (正式版 prod build) -->
+  <script src="https://unpkg.com/vue@3.5.43/dist/vue.global.prod.js" crossorigin="anonymous"></script>
   <!-- Supabase JS Client SDK -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js" crossorigin="anonymous"></script>
   <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <!-- FontAwesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous">
   
   <script>
     tailwind.config = {
@@ -2705,6 +2706,13 @@
         };
       }
     }).mount('#app');
+
+    // 註冊 Service Worker (離線快取，見 sw.js)。只有透過 http(s) 開啟時才有效，直接點兩下開啟本機檔案 (file://) 不支援
+    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(e => console.error("Service Worker 註冊失敗", e));
+      });
+    }
   </script>
 </body>
 </html>
