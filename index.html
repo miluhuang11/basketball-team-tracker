@@ -514,7 +514,7 @@
               :class="activeTab === 'cloud' ? 'border-b-2 border-indigo-500 text-white font-bold bg-slate-900/30' : 'text-slate-400 hover:text-slate-200'"
               class="flex-1 py-2.5 text-xs text-center transition"
             >
-              <i class="fa-solid fa-cloud mr-1"></i> 雲端同步
+              <i :class="syncError ? 'fa-solid fa-triangle-exclamation text-rose-400' : 'fa-solid fa-cloud'" class="mr-1"></i> 雲端同步
             </button>
           </div>
 
@@ -595,7 +595,7 @@
                   </thead>
                   <tbody class="divide-y divide-slate-800/50">
                     <tr 
-                      v-for="p in players" 
+                      v-for="{ p, s, sec } in boxscoreRows" 
                       :key="p.id" 
                       class="hover:bg-slate-800/30 transition-colors duration-150"
                       :class="p.isOnCourt ? 'bg-indigo-950/15 border-l-2 border-indigo-500' : ''"
@@ -610,18 +610,18 @@
                       </td>
                       
                       <!-- 時間 -->
-                      <td class="p-3 text-center font-mono border-r border-slate-800/40" :class="getDisplaySeconds(p) === 0 ? 'text-slate-600' : 'text-slate-300'">
-                        {{ formatMinutes(getDisplaySeconds(p)) }}
+                      <td class="p-3 text-center font-mono border-r border-slate-800/40" :class="sec === 0 ? 'text-slate-600' : 'text-slate-300'">
+                        {{ formatMinutes(sec) }}
                       </td>
                       
                       <!-- 得分 (若在總表，則顯示彩色分節 breakdown) -->
                       <td class="p-3 text-center font-mono border-r border-slate-800/40">
                         <div class="flex flex-col items-center">
-                          <span :class="getDisplayStats(p).pts === 0 ? 'text-slate-600 font-normal' : (boxscoreQuarterTab === 'total' ? 'text-amber-400 font-black text-xs' : 'text-slate-100 font-bold')">
-                            {{ getDisplayStats(p).pts }}
+                          <span :class="s.pts === 0 ? 'text-slate-600 font-normal' : (boxscoreQuarterTab === 'total' ? 'text-amber-400 font-black text-xs' : 'text-slate-100 font-bold')">
+                            {{ s.pts }}
                           </span>
                           <!-- 得分 breakdown -->
-                          <span v-if="boxscoreQuarterTab === 'total' && getDisplayStats(p).pts > 0" class="text-[8px] scale-90 text-slate-500 font-semibold mt-0.5 flex items-center gap-0.5 select-none">
+                          <span v-if="boxscoreQuarterTab === 'total' && s.pts > 0" class="text-[8px] scale-90 text-slate-500 font-semibold mt-0.5 flex items-center gap-0.5 select-none">
                             <span class="text-sky-400">{{ p.statsByQuarter?.[1]?.pts ?? 0 }}</span>·<span class="text-rose-500">{{ p.statsByQuarter?.[2]?.pts ?? 0 }}</span>·<span class="text-emerald-400">{{ p.statsByQuarter?.[3]?.pts ?? 0 }}</span>·<span class="text-slate-300">{{ p.statsByQuarter?.[4]?.pts ?? 0 }}</span>
                             <span v-if="p.statsByQuarter?.['OT']?.pts > 0" class="text-amber-500">·{{ p.statsByQuarter?.['OT']?.pts }}</span>
                           </span>
@@ -629,31 +629,31 @@
                       </td>
                       
                       <!-- 2分 -->
-                      <td class="p-3 text-center font-mono" :class="getDisplayStats(p).fg2a === 0 ? 'text-slate-600' : 'text-slate-200 font-bold'">
-                        {{ getDisplayStats(p).fg2m }}-{{ getDisplayStats(p).fg2a }}
+                      <td class="p-3 text-center font-mono" :class="s.fg2a === 0 ? 'text-slate-600' : 'text-slate-200 font-bold'">
+                        {{ s.fg2m }}-{{ s.fg2a }}
                       </td>
                       
                       <!-- 3分 -->
-                      <td class="p-3 text-center font-mono" :class="getDisplayStats(p).fg3a === 0 ? 'text-slate-600' : 'text-slate-200 font-bold'">
-                        {{ getDisplayStats(p).fg3m }}-{{ getDisplayStats(p).fg3a }}
+                      <td class="p-3 text-center font-mono" :class="s.fg3a === 0 ? 'text-slate-600' : 'text-slate-200 font-bold'">
+                        {{ s.fg3m }}-{{ s.fg3a }}
                       </td>
                       
                       <!-- 罰球 -->
-                      <td class="p-3 text-center font-mono border-r border-slate-800/40" :class="getDisplayStats(p).fta === 0 ? 'text-slate-600' : 'text-slate-200 font-bold'">
-                        {{ getDisplayStats(p).ftm }}-{{ getDisplayStats(p).fta }}
+                      <td class="p-3 text-center font-mono border-r border-slate-800/40" :class="s.fta === 0 ? 'text-slate-600' : 'text-slate-200 font-bold'">
+                        {{ s.ftm }}-{{ s.fta }}
                       </td>
                       
                       <!-- 助攻 -->
-                      <td class="p-3 text-center font-mono border-r border-slate-800/40" :class="getDisplayStats(p).ast === 0 ? 'text-slate-600' : 'text-indigo-400 font-black'">
-                        {{ getDisplayStats(p).ast }}
+                      <td class="p-3 text-center font-mono border-r border-slate-800/40" :class="s.ast === 0 ? 'text-slate-600' : 'text-indigo-400 font-black'">
+                        {{ s.ast }}
                       </td>
                       
                       <!-- 籃板 -->
-                      <td class="p-3 text-center font-mono border-r border-slate-800/40" :class="(getDisplayStats(p).oreb + getDisplayStats(p).dreb) === 0 ? 'text-slate-600' : 'text-sky-400 font-black'">
+                      <td class="p-3 text-center font-mono border-r border-slate-800/40" :class="(s.oreb + s.dreb) === 0 ? 'text-slate-600' : 'text-sky-400 font-black'">
                         <div>
-                          <span>{{ getDisplayStats(p).oreb + getDisplayStats(p).dreb }}</span>
-                          <span class="text-[8px] text-slate-500 block scale-90 select-none" v-if="(getDisplayStats(p).oreb + getDisplayStats(p).dreb) > 0">
-                            ({{ getDisplayStats(p).oreb }}/{{ getDisplayStats(p).dreb }})
+                          <span>{{ s.oreb + s.dreb }}</span>
+                          <span class="text-[8px] text-slate-500 block scale-90 select-none" v-if="(s.oreb + s.dreb) > 0">
+                            ({{ s.oreb }}/{{ s.dreb }})
                           </span>
                         </div>
                       </td>
@@ -662,17 +662,17 @@
                       <td class="p-3 text-center text-slate-400 leading-normal font-sans">
                         <div class="flex flex-col items-center">
                           <div class="flex items-center space-x-1.5 text-[9px] font-mono">
-                            <span :class="getDisplayStats(p).stl === 0 ? 'text-slate-600' : 'text-amber-400 font-bold'">S:{{ getDisplayStats(p).stl }}</span>
+                            <span :class="s.stl === 0 ? 'text-slate-600' : 'text-amber-400 font-bold'">S:{{ s.stl }}</span>
                             <span class="text-slate-800">|</span>
-                            <span :class="getDisplayStats(p).blk === 0 ? 'text-slate-600' : 'text-violet-400 font-bold'">B:{{ getDisplayStats(p).blk }}</span>
+                            <span :class="s.blk === 0 ? 'text-slate-600' : 'text-violet-400 font-bold'">B:{{ s.blk }}</span>
                             <span class="text-slate-800">|</span>
-                            <span :class="getDisplayStats(p).to === 0 ? 'text-slate-600' : 'text-rose-400 font-bold'">T:{{ getDisplayStats(p).to }}</span>
+                            <span :class="s.to === 0 ? 'text-slate-600' : 'text-rose-400 font-bold'">T:{{ s.to }}</span>
                           </div>
                           <div class="mt-1 font-mono">
-                            <span class="font-bold" :class="getDisplayStats(p).pf >= 4 ? 'text-rose-500 font-black animate-pulse text-xs' : (getDisplayStats(p).pf === 0 && boxscoreQuarterTab === 'total' ? 'text-slate-600 font-normal' : 'text-slate-300')">
-                              F:{{ boxscoreQuarterTab === 'total' ? getDisplayStats(p).pf : displayQuarterFouls(p, boxscoreQuarterTab) }}
+                            <span class="font-bold" :class="s.pf >= 4 ? 'text-rose-500 font-black animate-pulse text-xs' : (s.pf === 0 && boxscoreQuarterTab === 'total' ? 'text-slate-600 font-normal' : 'text-slate-300')">
+                              F:{{ boxscoreQuarterTab === 'total' ? s.pf : formatQuarterFouls(p, boxscoreQuarterTab) }}
                             </span>
-                            <span v-if="boxscoreQuarterTab === 'total' && getDisplayStats(p).pf > 0" class="text-[8px] scale-90 text-slate-500 ml-1 font-semibold block mt-0.5 select-none">
+                            <span v-if="boxscoreQuarterTab === 'total' && s.pf > 0" class="text-[8px] scale-90 text-slate-500 ml-1 font-semibold block mt-0.5 select-none">
                               (<span class="text-sky-400">{{ formatQuarterFouls(p, 1) }}</span>·<span class="text-rose-500">{{ formatQuarterFouls(p, 2) }}</span>·<span class="text-emerald-400">{{ formatQuarterFouls(p, 3) }}</span>·<span class="text-slate-300">{{ formatQuarterFouls(p, 4) }}</span><span v-if="formatQuarterFouls(p, 'OT') !== '-'" class="text-amber-500">·{{ formatQuarterFouls(p, 'OT') }}</span>)
                             </span>
                           </div>
@@ -874,6 +874,14 @@
                       >
                       <span>啟用背景自動同步 (每節切換/時間暫停時自動存檔)</span>
                     </label>
+
+                    <!-- 同步狀態：失敗時提醒手動重傳，成功時顯示最近一次上傳時間 -->
+                    <p v-if="syncError" class="text-[10px] text-rose-400 font-bold leading-normal">
+                      <i class="fa-solid fa-triangle-exclamation mr-0.5"></i> 最近一次上傳失敗，資料仍保存在本機。網路恢復後請按上方按鈕重新上傳。
+                    </p>
+                    <p v-else-if="lastSyncedAt" class="text-[10px] text-slate-500">
+                      <i class="fa-solid fa-circle-check text-emerald-500 mr-0.5"></i> 上次成功上傳：{{ lastSyncedAt }}
+                    </p>
                   </div>
                 </div>
 
@@ -1017,23 +1025,43 @@
 
   <!-- Vue 3 Core Logic -->
   <script>
-    const { createApp, ref, computed, onMounted, onUnmounted, watch } = Vue;
+    const { createApp, ref, shallowRef, computed, onMounted, onUnmounted, watch, nextTick, toRaw } = Vue;
 
     createApp({
       setup() {
+        const STORAGE_KEY = "basketball_tracker_state";
+        const QUARTER_KEYS = [1, 2, 3, 4, "OT"];
+        const HISTORY_LIMIT = 30;        // 記憶體中保留的 Undo 步數
+        const HISTORY_PERSIST_LIMIT = 5; // 寫進 localStorage 的 Undo 步數 (重新整理頁面後還能 Undo 的次數)
+
+        // 攻守動作定義：delta 是該動作對統計欄位的增減，「記錄」與「撤銷單筆 Log」共用同一份，確保兩邊一定對得起來
+        const ACTIONS = {
+          FG2_MADE: { text: '2分球投進 (+2)',     color: '#34d399', delta: { fg2a: 1, fg2m: 1, pts: 2 } },
+          FG2_MISS: { text: '2分出手沒進',        color: '#f87171', delta: { fg2a: 1 } },
+          FG3_MADE: { text: '3分長射投進 (+3)',   color: '#10b981', delta: { fg3a: 1, fg3m: 1, pts: 3 } },
+          FG3_MISS: { text: '3分長射沒進',        color: '#f87171', delta: { fg3a: 1 } },
+          FT_MADE:  { text: '罰球命中 (+1)',      color: '#2dd4bf', delta: { fta: 1, ftm: 1, pts: 1 } },
+          FT_MISS:  { text: '罰球沒進',           color: '#f87171', delta: { fta: 1 } },
+          OREB:     { text: '搶下進攻籃板',       color: '#38bdf8', delta: { oreb: 1 } },
+          DREB:     { text: '抓下防守籃板',       color: '#60a5fa', delta: { dreb: 1 } },
+          AST:      { text: '妙傳助攻',           color: '#818cf8', delta: { ast: 1 } },
+          STL:      { text: '神抄截對手',         color: '#fbbf24', delta: { stl: 1 } },
+          BLK:      { text: '賞了對手火鍋 (BLK)', color: '#c084fc', delta: { blk: 1 } },
+          TO:       { text: '失誤 (Turnover)',    color: '#fb7185', delta: { to: 1 } }
+        };
+
         // 基本設定與球隊
         const teamName = ref("東吳女籃 WSCU");
         const currentQuarter = ref(1);
-        const quarters = [1, 2, 3, 4, "OT"];
+        const quarters = QUARTER_KEYS;
         const possessionArrow = ref("none"); // W = 淺色, B = 深色, none = 尚未決定
-        const teamJerseyColor = ref("indigo"); // 預設配色
-        
+
         // 頁面選單控制
-        const activeTab = ref("bench"); // 'bench', 'boxscore', 'roster'
+        const activeTab = ref("bench"); // 'bench', 'boxscore', 'roster', 'cloud'
         const showFoulSelector = ref(false);
         const isBoxscoreMaximized = ref(false);
         const confirmSavedBeforeReset = ref(false);
-        
+
         // 計時器相關
         const remainingSeconds = ref(600); // 預設 10 分鐘 (600秒)
         const isTimerRunning = ref(false);
@@ -1073,11 +1101,11 @@
 
         const players = ref([]);
         const selectedCourtPlayer = ref(null);
-        
-        // 團隊數據 (本節犯規為節連動，會依 Quarter 歸零或累計？一般大會團犯單節五犯，我們獨立記錄。可以按單節累計，重設時重算)
-        const teamFouls = ref(0); 
+
+        // 團隊數據 (團犯以單節累計，換節時歸零)
+        const teamFouls = ref(0);
         const teamTimeouts = ref(0); // 暫停次數
-        
+
         const maxTimeouts = computed(() => {
           // FIBA 規則：上半場（Q1、Q2）共 2 次暫停；下半場（Q3、Q4）共 3 次暫停；OT 每次 1 次
           if (currentQuarter.value === 1 || currentQuarter.value === 2) return 2;
@@ -1088,12 +1116,12 @@
         // 數據大表分節分頁
         const boxscoreQuarterTab = ref("total"); // 預設顯示總表
         const boxscoreTabs = [
-          { value: 1, label: "第一節 (Q1)", colorClass: "border-sky-500 text-sky-400 hover:bg-sky-500/10", activeClass: "bg-sky-500 text-white font-bold" },
-          { value: 2, label: "第二節 (Q2)", colorClass: "border-rose-500 text-rose-400 hover:bg-rose-500/10", activeClass: "bg-rose-500 text-white font-bold" },
-          { value: 3, label: "第三節 (Q3)", colorClass: "border-emerald-500 text-emerald-400 hover:bg-emerald-500/10", activeClass: "bg-emerald-500 text-white font-bold" },
-          { value: 4, label: "第四節 (Q4)", colorClass: "border-slate-500 text-slate-300 hover:bg-slate-500/10", activeClass: "bg-slate-300 text-slate-950 font-bold" },
-          { value: "OT", label: "延長賽 (OT)", colorClass: "border-amber-500 text-amber-400 hover:bg-amber-500/10", activeClass: "bg-amber-500 text-slate-950 font-bold" },
-          { value: "total", label: "總表", colorClass: "border-indigo-500 text-indigo-400 hover:bg-indigo-500/10", activeClass: "bg-indigo-600 text-white font-bold" }
+          { value: 1, label: "第一節 (Q1)", activeClass: "bg-sky-500 text-white font-bold" },
+          { value: 2, label: "第二節 (Q2)", activeClass: "bg-rose-500 text-white font-bold" },
+          { value: 3, label: "第三節 (Q3)", activeClass: "bg-emerald-500 text-white font-bold" },
+          { value: 4, label: "第四節 (Q4)", activeClass: "bg-slate-300 text-slate-950 font-bold" },
+          { value: "OT", label: "延長賽 (OT)", activeClass: "bg-amber-500 text-slate-950 font-bold" },
+          { value: "total", label: "總表", activeClass: "bg-indigo-600 text-white font-bold" }
         ];
 
         // Supabase 雲端儲存相關 state
@@ -1104,21 +1132,16 @@
         const supabaseGamesList = ref([]);
         const isAutoSyncEnabled = ref(localStorage.getItem("supabase_autosync") === "1");
         const currentGameCloudId = ref(localStorage.getItem("supabase_game_id") || null);
-        
+        const syncError = ref(false);   // 最近一次雲端上傳是否失敗
+        const lastSyncedAt = ref("");   // 最近一次成功上傳的時間 (顯示用)
+        let isSyncQueued = false;       // 上傳進行中又有新的同步請求時，排隊等這次結束再傳一次
+
         // 事件 Log 與歷史紀錄 (歷史堆疊用於 Undo)
         const logs = ref([]);
-        const history = ref([]); // 儲存 state 的 Deep Clone 用於全面 Undo
-
-        // 陣容球衣色彩選擇
-        const jerseyColors = [
-          { name: 'white', label: '淺色白', hex: '#ffffff' },
-          { name: 'indigo', label: '深靛藍', hex: '#6366f1' },
-          { name: 'rose', label: '熱情紅', hex: '#f43f5e' },
-          { name: 'emerald', label: '森林綠', hex: '#10b981' },
-          { name: 'amber', label: '活力黃', hex: '#f59e0b' },
-          { name: 'cyan', label: '天空藍', hex: '#06b6d4' },
-          { name: 'black', label: '極致黑', hex: '#090d16' }
-        ];
+        // 快照只會整份替換、不會改動內部內容，用 shallowRef 可避免 Vue 對每份快照做深層追蹤
+        const history = shallowRef([]);
+        let lastLogId = 0;
+        let hasWarnedSaveFailure = false;
 
         // 新增球員輸入欄
         const newPlayerName = ref("");
@@ -1165,15 +1188,17 @@
           };
         }
 
+        // 該節沒有資料時顯示用的空白統計 (凍結以免被誤改)
+        const EMPTY_STATS = Object.freeze(createStatsObject());
+
         function updatePlayerTotals(p) {
           if (!p.statsByQuarter) p.statsByQuarter = createQuarterStats();
           if (!p.playedSecondsByQuarter) p.playedSecondsByQuarter = createQuarterSeconds();
-          
+
           p.stats = createStatsObject();
           p.playedSeconds = 0;
-          
-          const qs = [1, 2, 3, 4, "OT"];
-          qs.forEach(q => {
+
+          QUARTER_KEYS.forEach(q => {
             p.playedSeconds += p.playedSecondsByQuarter[q] || 0;
             const qStats = p.statsByQuarter[q];
             if (qStats) {
@@ -1189,66 +1214,74 @@
           });
         }
 
+        // 補齊舊版或雲端資料缺少的欄位，讓不同版本存下來的紀錄都能正常載入
+        function normalizePlayer(p) {
+          if (!p.statsByQuarter) {
+            p.statsByQuarter = createQuarterStats();
+            if (p.stats) {
+              p.statsByQuarter[1] = JSON.parse(JSON.stringify(p.stats));
+            }
+          }
+          if (!p.playedSecondsByQuarter) {
+            p.playedSecondsByQuarter = createQuarterSeconds();
+            if (p.playedSeconds) {
+              p.playedSecondsByQuarter[1] = p.playedSeconds;
+            }
+          }
+          QUARTER_KEYS.forEach(q => {
+            if (!p.statsByQuarter[q]) p.statsByQuarter[q] = createStatsObject();
+            if (p.playedSecondsByQuarter[q] === undefined) p.playedSecondsByQuarter[q] = 0;
+
+            // 檢查並初始化分節的 foulsList
+            if (!p.statsByQuarter[q].foulsList) {
+              p.statsByQuarter[q].foulsList = [];
+              const pfCount = p.statsByQuarter[q].pf || 0;
+              for (let i = 0; i < pfCount; i++) {
+                p.statsByQuarter[q].foulsList.push('P');
+              }
+            }
+          });
+          updatePlayerTotals(p);
+        }
+
+        function createDefaultRoster() {
+          const roster = JSON.parse(JSON.stringify(defaultPlayers));
+          roster.forEach(normalizePlayer);
+          return roster;
+        }
+
         // 計算屬性
         const onCourtPlayers = computed(() => players.value.filter(p => p.isOnCourt));
         const benchPlayers = computed(() => players.value.filter(p => !p.isOnCourt));
         const teamTotalPoints = computed(() => players.value.reduce((sum, p) => sum + p.stats.pts, 0));
 
-        const formattedTime = computed(() => {
-          const m = Math.floor(remainingSeconds.value / 60).toString().padStart(2, '0');
-          const s = (remainingSeconds.value % 60).toString().padStart(2, '0');
-          return `${m}:${s}`;
-        });
+        const formattedTime = computed(() => formatMinutes(remainingSeconds.value));
+
+        // 數據大表每一列要顯示的資料 (依目前選的分節分頁)，先算好一次，模板就不必每格重複查詢
+        const boxscoreRows = computed(() => players.value.map(p => ({
+          p,
+          s: getDisplayStats(p),
+          sec: getDisplaySeconds(p)
+        })));
 
         // 讀取/初始化本機儲存
         function loadState() {
-          const saved = localStorage.getItem("basketball_tracker_state");
+          const saved = localStorage.getItem(STORAGE_KEY);
           if (saved) {
             try {
               const state = JSON.parse(saved);
               teamName.value = state.teamName || "東吳女籃 WSCU";
               currentQuarter.value = state.currentQuarter || 1;
               possessionArrow.value = state.possessionArrow || "none";
-              teamJerseyColor.value = state.teamJerseyColor || "indigo";
               remainingSeconds.value = state.remainingSeconds !== undefined ? state.remainingSeconds : 600;
               players.value = state.players || [];
-              
-              // 補齊與升級相容資料結構
-              players.value.forEach(p => {
-                if (!p.statsByQuarter) {
-                  p.statsByQuarter = createQuarterStats();
-                  if (p.stats) {
-                    p.statsByQuarter[1] = JSON.parse(JSON.stringify(p.stats));
-                  }
-                }
-                if (!p.playedSecondsByQuarter) {
-                  p.playedSecondsByQuarter = createQuarterSeconds();
-                  if (p.playedSeconds) {
-                    p.playedSecondsByQuarter[1] = p.playedSeconds;
-                  }
-                }
-                const qs = [1, 2, 3, 4, "OT"];
-                qs.forEach(q => {
-                  if (!p.statsByQuarter[q]) p.statsByQuarter[q] = createStatsObject();
-                  if (p.playedSecondsByQuarter[q] === undefined) p.playedSecondsByQuarter[q] = 0;
-                  
-                  // 檢查並初始化分節的 foulsList
-                  if (!p.statsByQuarter[q].foulsList) {
-                    p.statsByQuarter[q].foulsList = [];
-                    const pfCount = p.statsByQuarter[q].pf || 0;
-                    for (let i = 0; i < pfCount; i++) {
-                      p.statsByQuarter[q].foulsList.push('P');
-                    }
-                  }
-                });
-                updatePlayerTotals(p);
-              });
-              
+              players.value.forEach(normalizePlayer);
+
               sortPlayers();
               teamFouls.value = state.teamFouls || 0;
               teamTimeouts.value = state.teamTimeouts || 0;
               logs.value = state.logs || [];
-              history.value = state.history || [];
+              history.value = Array.isArray(state.history) ? state.history : [];
               currentGameCloudId.value = localStorage.getItem("supabase_game_id") || null;
             } catch (e) {
               console.error("解析本機儲存資料失敗，載入預設值", e);
@@ -1263,14 +1296,8 @@
           teamName.value = "東吳女籃 WSCU";
           currentQuarter.value = 1;
           possessionArrow.value = "none";
-          teamJerseyColor.value = "indigo";
           remainingSeconds.value = 600;
-          players.value = JSON.parse(JSON.stringify(defaultPlayers));
-          players.value.forEach(p => {
-            p.statsByQuarter = createQuarterStats();
-            p.playedSecondsByQuarter = createQuarterSeconds();
-            updatePlayerTotals(p);
-          });
+          players.value = createDefaultRoster();
           teamFouls.value = 0;
           teamTimeouts.value = 0;
           currentGameCloudId.value = null;
@@ -1286,65 +1313,94 @@
             teamName: teamName.value,
             currentQuarter: currentQuarter.value,
             possessionArrow: possessionArrow.value,
-            teamJerseyColor: teamJerseyColor.value,
             remainingSeconds: remainingSeconds.value,
             players: players.value,
             teamFouls: teamFouls.value,
             teamTimeouts: teamTimeouts.value,
-            logs: logs.value,
-            history: history.value
+            logs: logs.value
           };
-          localStorage.setItem("basketball_tracker_state", JSON.stringify(state));
+          try {
+            // Undo 快照每份都含整份球員與 Log，全部寫入會讓 localStorage 快速膨脹，所以只保留最近幾步
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, history: history.value.slice(0, HISTORY_PERSIST_LIMIT) }));
+            hasWarnedSaveFailure = false;
+          } catch (e) {
+            // 多半是 QuotaExceededError (超過瀏覽器儲存上限)：先放棄 Undo 歷史，確保比賽數據本身存得進去
+            try {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, history: [] }));
+            } catch (e2) {
+              console.error("本機儲存失敗", e2);
+              if (!hasWarnedSaveFailure) {
+                hasWarnedSaveFailure = true;
+                showToast("本機儲存失敗！請立即匯出報告或同步雲端，以免資料遺失", 'error');
+              }
+            }
+          }
+        }
+
+        // 寫入一筆事件 Log (最新的放最前面)
+        function addLog(entry) {
+          // 以時間戳當 id；同一毫秒內連續寫入時往上遞增，確保每筆都不重複
+          lastLogId = Math.max(Date.now(), lastLogId + 1);
+          logs.value.unshift({
+            id: lastLogId,
+            quarter: currentQuarter.value,
+            timeStr: formattedTime.value,
+            ...entry
+          });
         }
 
         // 計時器控制
+        function stopTimer() {
+          if (gameTimerInterval) {
+            clearInterval(gameTimerInterval);
+            gameTimerInterval = null;
+          }
+          isTimerRunning.value = false;
+        }
+
+        function tickTimer() {
+          const elapsed = Math.floor((Date.now() - lastTickAt) / 1000);
+          if (elapsed < 1) return;
+          lastTickAt += elapsed * 1000;
+
+          const step = Math.min(elapsed, remainingSeconds.value);
+          if (step > 0) {
+            const before = remainingSeconds.value;
+            remainingSeconds.value -= step;
+            // 自動幫場上 5 人增加分節與總上場時間 (秒)
+            const q = currentQuarter.value;
+            players.value.forEach(p => {
+              if (!p.isOnCourt) return;
+              if (!p.playedSecondsByQuarter) p.playedSecondsByQuarter = createQuarterSeconds();
+              p.playedSecondsByQuarter[q] = (p.playedSecondsByQuarter[q] || 0) + step;
+              p.playedSeconds = (p.playedSeconds || 0) + step;
+            });
+            // 每跨過一個 5 秒刻度存一次 state，不要太頻繁以優化效能
+            if (Math.floor(before / 5) !== Math.floor(remainingSeconds.value / 5)) {
+              saveState();
+            }
+          }
+
+          if (remainingSeconds.value === 0) {
+            stopTimer();
+            saveState();
+            playClickSound(330, 0.5); // 音效提示結束
+            showToast("本節時間結束！");
+          }
+        }
+
         function toggleTimer() {
           playClickSound(523.25, 0.08); // C5
-          isTimerRunning.value = !isTimerRunning.value;
           if (isTimerRunning.value) {
+            stopTimer();
+            saveState();
+            autoSync();
+          } else {
             // 以實際經過的時間計算，而不是每次固定扣 1 秒：
             // 分頁切到背景或螢幕鎖定時瀏覽器會延遲 setInterval，固定扣 1 秒會讓時鐘越走越慢
+            isTimerRunning.value = true;
             lastTickAt = Date.now();
-            gameTimerInterval = setInterval(() => {
-              const elapsed = Math.floor((Date.now() - lastTickAt) / 1000);
-              if (elapsed < 1) return;
-              lastTickAt += elapsed * 1000;
-
-              const step = Math.min(elapsed, remainingSeconds.value);
-              if (step > 0) {
-                const before = remainingSeconds.value;
-                remainingSeconds.value -= step;
-                // 自動幫場上 5 人增加分節與總上場時間 (秒)
-                players.value.forEach(p => {
-                  if (p.isOnCourt) {
-                    const q = currentQuarter.value;
-                    if (!p.playedSecondsByQuarter) p.playedSecondsByQuarter = createQuarterSeconds();
-                    p.playedSecondsByQuarter[q] = (p.playedSecondsByQuarter[q] || 0) + step;
-                    updatePlayerTotals(p);
-                  }
-                });
-                // 每跨過一個 5 秒刻度存一次 state，不要太頻繁以優化效能
-                if (Math.floor(before / 5) !== Math.floor(remainingSeconds.value / 5)) {
-                  saveState();
-                }
-              }
-
-              if (remainingSeconds.value === 0) {
-                isTimerRunning.value = false;
-                clearInterval(gameTimerInterval);
-                saveState();
-                playClickSound(330, 0.5); // 音效提示結束
-                showToast("本節時間結束！");
-              }
-            }, 250);
-          } else {
-            if (gameTimerInterval) {
-              clearInterval(gameTimerInterval);
-            }
-            saveState();
-            if (isAutoSyncEnabled.value && isSupabaseConnected.value) {
-              saveToSupabase(true);
-            }
+            gameTimerInterval = setInterval(tickTimer, 250);
           }
         }
 
@@ -1360,7 +1416,7 @@
           if (val) {
             tempTimeInput.value = formattedTime.value;
             // 等 DOM 更新後 focus
-            Vue.nextTick(() => {
+            nextTick(() => {
               timeInputRef.value?.focus();
               timeInputRef.value?.select();
             });
@@ -1384,111 +1440,75 @@
 
         // 節數切換
         function changeQuarter(q) {
+          const prevQ = currentQuarter.value;
+          // 點到目前所在的節數時不動作，避免誤觸把時鐘與團犯重設 (延長賽可再點一次進入下一個延長賽)
+          if (q === prevQ) {
+            if (q !== 'OT') return;
+            if (!confirm("要開始下一個延長賽嗎？時間會重設為 5:00，團犯與暫停次數也會重設。")) return;
+          }
+
           playClickSound(440, 0.05);
           // 儲存 Undo 歷史
           pushHistoryState();
 
-          const prevQ = currentQuarter.value;
-          currentQuarter.value = q;
-          
-          // 換節自動重設單節剩餘時間 (10:00，延長賽為 5:00)
-          if (q === 'OT') {
-            remainingSeconds.value = 300; // 延長賽 5 分鐘
-          } else {
-            remainingSeconds.value = 600; // 常規節 10 分鐘
-          }
+          // 記下換節前的狀態，之後從 Log 撤銷這次換節時才能完整還原
+          const meta = {
+            prevQ,
+            newQ: q,
+            prevRemaining: remainingSeconds.value,
+            prevTeamFouls: teamFouls.value,
+            prevTeamTimeouts: teamTimeouts.value
+          };
 
           // 暫停計時器跑動 (避免切換後計時器在無人看管下直接繼續倒數)
-          if (isTimerRunning.value) {
-            isTimerRunning.value = false;
-            if (gameTimerInterval) {
-              clearInterval(gameTimerInterval);
-            }
-          }
-          
-          // 如果是小節切換，通常國際賽會歸零單節隊犯，此處詢問或提示？
-          // 為求單隊極速操作，小節切換時自動記錄日誌，並可選是否重設團犯 (一般單節歸零)
-          let note = `節數由 Q${prevQ} 切換至 Q${q}`;
-          if (typeof q === 'number' || q === 'OT') {
-            // 詢問或自動歸零本節犯規
-            teamFouls.value = 0;
-            note += ` (本節團犯已自動歸零)`;
-          }
+          stopTimer();
+          currentQuarter.value = q;
+          // 換節自動重設單節剩餘時間 (10:00，延長賽為 5:00)
+          remainingSeconds.value = q === 'OT' ? 300 : 600;
+
+          teamFouls.value = 0;
+          let note = `節數由 Q${prevQ} 切換至 Q${q} (本節團犯已自動歸零)`;
 
           // 判斷是否需要歸零暫停次數（上半場到下半場、或進入延長賽）
           const isPrevHalf1 = (prevQ === 1 || prevQ === 2);
           const isNewHalf2 = (q === 3 || q === 4);
-          if ((isPrevHalf1 && isNewHalf2) || q === 'OT' || (prevQ === 'OT' && q === 'OT')) {
+          if ((isPrevHalf1 && isNewHalf2) || q === 'OT') {
             teamTimeouts.value = 0;
             note += ` (暫停次數已重設)`;
           }
 
-          logs.value.unshift({
-            id: Date.now(),
-            quarter: q,
-            timeStr: formattedTime.value,
-            actionText: note,
-            color: '#60a5fa',
-            actionType: 'QUARTER',
-            meta: { prevQ, newQ: q }
-          });
+          addLog({ actionText: note, color: '#60a5fa', actionType: 'QUARTER', meta });
 
           saveState();
-          
-          if (isAutoSyncEnabled.value && isSupabaseConnected.value) {
-            saveToSupabase(true);
-          }
+          autoSync();
         }
 
-        // 爭球箭頭切換
         // 設定開球球權
         function setPossession(side) {
+          updatePossession(side, '設定球權');
+        }
+
+        // 爭球箭頭轉邊
+        function togglePossession() {
+          updatePossession(possessionArrow.value === 'W' ? 'B' : 'W', '爭球箭頭轉向');
+        }
+
+        function updatePossession(side, label) {
           playClickSound(440, 0.05);
           pushHistoryState();
 
           const prev = possessionArrow.value;
           possessionArrow.value = side;
-          
-          logs.value.unshift({
-            id: Date.now(),
-            quarter: currentQuarter.value,
-            timeStr: formattedTime.value,
-            actionText: `設定球權：${possessionArrow.value === 'W' ? '◄ 淺色 (W)' : '► 深色 (B)'}`,
+
+          addLog({
+            actionText: `${label}：${side === 'W' ? '◄ 淺色 (W)' : '► 深色 (B)'}`,
             color: '#34d399',
             actionType: 'POSSESSION',
-            meta: { prev, new: possessionArrow.value }
+            meta: { prev, new: side }
           });
 
           saveState();
-          
-          if (isAutoSyncEnabled.value && isSupabaseConnected.value) {
-            saveToSupabase(true);
-          }
-        }
-
-        // 爭球箭頭轉邊
-        function togglePossession() {
-          playClickSound(440, 0.05);
-          pushHistoryState();
-
-          const prev = possessionArrow.value;
-          possessionArrow.value = possessionArrow.value === 'W' ? 'B' : 'W';
-          
-          logs.value.unshift({
-            id: Date.now(),
-            quarter: currentQuarter.value,
-            timeStr: formattedTime.value,
-            actionText: `爭球箭頭轉向：${possessionArrow.value === 'W' ? '◄ 淺色 (W)' : '► 深色 (B)'}`,
-            color: '#34d399',
-            actionType: 'POSSESSION',
-            meta: { prev, new: possessionArrow.value }
-          });
-
-          saveState();
-          
-          if (isAutoSyncEnabled.value && isSupabaseConnected.value) {
-            saveToSupabase(true);
-          }
+          autoSync();
         }
 
         // 記錄暫停
@@ -1497,28 +1517,20 @@
             showToast("本階段的暫停次數已用盡！", 'error');
             return;
           }
-          
+
           pushHistoryState();
-          
+
           // 自動暫停計時器
-          if (isTimerRunning.value) {
-            isTimerRunning.value = false;
-            if (gameTimerInterval) {
-              clearInterval(gameTimerInterval);
-            }
-          }
-          
+          stopTimer();
+
           teamTimeouts.value++;
-          
-          logs.value.unshift({
-            id: Date.now(),
-            quarter: currentQuarter.value,
-            timeStr: formattedTime.value,
+
+          addLog({
             actionText: `${teamName.value} 請求暫停 (累計第 ${teamTimeouts.value} 次)`,
             color: '#fbbf24', // 黃色
             actionType: 'TIMEOUT'
           });
-          
+
           playClickSound(349.23, 0.15); // F4
           saveState();
         }
@@ -1559,20 +1571,20 @@
           }
           try {
             supabaseClientInstance = supabase.createClient(supabaseUrl.value, supabaseKey.value);
-            const { data, error } = await supabaseClientInstance
+            const { error } = await supabaseClientInstance
               .from('game_records')
               .select('id')
               .limit(1);
-              
+
             if (error) throw error;
-            
+
             isSupabaseConnected.value = true;
             localStorage.setItem("supabase_url", supabaseUrl.value);
             localStorage.setItem("supabase_key", supabaseKey.value);
-            
+
             // 抓取雲端列表
             fetchCloudGames(true);
-            
+
             if (!silent) showToast("Supabase 資料庫連線成功！");
           } catch (e) {
             isSupabaseConnected.value = false;
@@ -1594,7 +1606,16 @@
           currentGameCloudId.value = null;
           localStorage.removeItem("supabase_game_id");
           supabaseGamesList.value = [];
+          syncError.value = false;
+          lastSyncedAt.value = "";
           showToast("已中斷雲端連線並清除密鑰設定");
+        }
+
+        // 背景自動同步 (有開啟且已連線時才會上傳)
+        function autoSync() {
+          if (isAutoSyncEnabled.value && isSupabaseConnected.value) {
+            saveToSupabase(true);
+          }
         }
 
         async function saveToSupabase(silent = false) {
@@ -1603,9 +1624,16 @@
             if (!silent) showToast("雲端資料庫未連線，無法上傳", 'error');
             return;
           }
-          
+
+          // 上一次上傳還沒結束：排隊等它完成後再傳一次。
+          // 若同時送出兩次，新比賽還沒拿到雲端 id 時會被 insert 成兩筆重複紀錄
+          if (isSupabaseSyncing.value) {
+            isSyncQueued = true;
+            return;
+          }
+
           isSupabaseSyncing.value = true;
-          
+
           const payload = {
             team_name: teamName.value,
             score: teamTotalPoints.value,
@@ -1616,14 +1644,14 @@
             team_fouls: teamFouls.value,
             team_timeouts: teamTimeouts.value
           };
-          
+
           try {
             if (currentGameCloudId.value) {
               const { error } = await client
                 .from('game_records')
                 .update(payload)
                 .eq('id', currentGameCloudId.value);
-                
+
               if (error) throw error;
               if (!silent) showToast("雲端比賽紀錄已更新！");
             } else {
@@ -1632,7 +1660,7 @@
                 .insert(payload)
                 .select('id')
                 .single();
-                
+
               if (error) throw error;
               if (data && data.id) {
                 currentGameCloudId.value = data.id;
@@ -1640,70 +1668,86 @@
               }
               if (!silent) showToast("全新比賽紀錄已上傳至雲端！");
             }
+            syncError.value = false;
+            lastSyncedAt.value = new Date().toLocaleTimeString();
             fetchCloudGames(true);
           } catch (e) {
             console.error(e);
-            if (!silent) showToast("上傳失敗，請檢查 Supabase 表格設定", 'error');
+            if (!silent) {
+              showToast("上傳失敗，請檢查網路連線與 Supabase 表格設定", 'error');
+            } else if (!syncError.value) {
+              // 自動同步只在「剛開始失敗」時提示一次，避免網路不穩時每次暫停都跳通知
+              showToast("自動同步失敗！資料仍保存在本機，網路恢復後請到「雲端同步」手動上傳", 'error');
+            }
+            syncError.value = true;
           } finally {
             isSupabaseSyncing.value = false;
+            if (isSyncQueued) {
+              isSyncQueued = false;
+              saveToSupabase(true);
+            }
           }
         }
 
         async function fetchCloudGames(silent = false) {
           const client = getSupabaseClient();
           if (!client || !isSupabaseConnected.value) return;
-          
+
           try {
             const { data, error } = await client
               .from('game_records')
               .select('id, team_name, game_date, score, quarter')
               .order('created_at', { ascending: false });
-              
+
             if (error) throw error;
             supabaseGamesList.value = data || [];
             if (!silent) showToast("雲端賽事列表已更新");
           } catch (e) {
             console.error(e);
+            if (!silent) showToast("讀取雲端賽事列表失敗，請檢查網路連線", 'error');
           }
         }
 
         async function loadGameFromCloud(gameId) {
           const client = getSupabaseClient();
           if (!client || !isSupabaseConnected.value) return;
-          
+
           if (!confirm("載入此雲端比賽將會覆蓋您目前的本地記錄，是否確定？")) {
             return;
           }
-          
+
           try {
             const { data, error } = await client
               .from('game_records')
               .select('*')
               .eq('id', gameId)
               .single();
-              
+
             if (error) throw error;
             if (data) {
-              if (isTimerRunning.value) {
-                isTimerRunning.value = false;
-                if (gameTimerInterval) clearInterval(gameTimerInterval);
-              }
-              
-              teamName.value = data.team_name;
+              stopTimer();
+
+              teamName.value = data.team_name || "東吳女籃 WSCU";
               currentQuarter.value = isNaN(Number(data.quarter)) ? data.quarter : Number(data.quarter);
-              remainingSeconds.value = data.remaining_seconds;
-              players.value = data.players;
+              remainingSeconds.value = data.remaining_seconds ?? 600;
+              // 雲端紀錄可能是舊版程式存的，欄位不一定齊全，載入時一律補齊
+              players.value = Array.isArray(data.players) ? data.players : [];
+              players.value.forEach(normalizePlayer);
               sortPlayers();
-              logs.value = data.logs;
-              teamFouls.value = data.team_fouls;
-              teamTimeouts.value = data.team_timeouts;
-              
+              logs.value = Array.isArray(data.logs) ? data.logs : [];
+              teamFouls.value = data.team_fouls || 0;
+              teamTimeouts.value = data.team_timeouts || 0;
+              // 雲端資料表沒有球權欄位，改從最近一筆球權 Log 還原
+              const lastPossessionLog = logs.value.find(l => l.actionType === 'POSSESSION');
+              possessionArrow.value = lastPossessionLog?.meta?.new || "none";
+
               currentGameCloudId.value = data.id;
               localStorage.setItem("supabase_game_id", data.id);
-              
+
               history.value = [];
               selectedCourtPlayer.value = null;
-              
+              showFoulSelector.value = false;
+
               saveState();
               showToast("已成功載入該場雲端紀錄！");
             }
@@ -1716,24 +1760,24 @@
         async function deleteGameFromCloud(gameId) {
           const client = getSupabaseClient();
           if (!client || !isSupabaseConnected.value) return;
-          
+
           if (!confirm("確定要將此場賽事紀錄從雲端永久刪除嗎？（此操作無法復原）")) {
             return;
           }
-          
+
           try {
             const { error } = await client
               .from('game_records')
               .delete()
               .eq('id', gameId);
-              
+
             if (error) throw error;
-            
+
             if (currentGameCloudId.value === gameId) {
               currentGameCloudId.value = null;
               localStorage.removeItem("supabase_game_id");
             }
-            
+
             fetchCloudGames(true);
             showToast("雲端比賽紀錄已刪除");
           } catch (e) {
@@ -1777,35 +1821,30 @@
 
         // 進行換人邏輯
         function swapPlayers(courtPlayer, benchPlayer) {
-          playClickSound(349.23, 0.12); // F4 - 換人專用聲音
-          pushHistoryState();
-
           // 對調場上狀態
           const outP = players.value.find(p => p.id === courtPlayer.id);
           const inP = players.value.find(p => p.id === benchPlayer.id);
-          
-          if (outP && inP) {
-            outP.isOnCourt = false;
-            inP.isOnCourt = true;
-            
-            // 寫入事件 Log
-            logs.value.unshift({
-              id: Date.now(),
-              quarter: currentQuarter.value,
-              timeStr: formattedTime.value,
-              playerNumber: inP.number,
-              playerName: inP.name,
-              actionText: `替換下場的 #${outP.number} ${outP.name} 上場`,
-              color: '#38bdf8', // 天空藍
-              actionType: 'SUB',
-              meta: { subOutId: outP.id, subInId: inP.id }
-            });
+          if (!outP || !inP) return;
 
-            // 自動切換選取為新換上的場上球員，以方便立刻繼續操作數據
-            selectedCourtPlayer.value = inP;
-            
-            saveState();
-          }
+          playClickSound(349.23, 0.12); // F4 - 換人專用聲音
+          pushHistoryState();
+
+          outP.isOnCourt = false;
+          inP.isOnCourt = true;
+
+          addLog({
+            playerNumber: inP.number,
+            playerName: inP.name,
+            actionText: `替換下場的 #${outP.number} ${outP.name} 上場`,
+            color: '#38bdf8', // 天空藍
+            actionType: 'SUB',
+            meta: { subOutId: outP.id, subInId: inP.id }
+          });
+
+          // 自動切換選取為新換上的場上球員，以方便立刻繼續操作數據
+          selectedCourtPlayer.value = inP;
+
+          saveState();
         }
 
         // 手動在名單調整上場/板凳狀態 (需維持 5 人)
@@ -1814,9 +1853,11 @@
           if (!target) return;
 
           if (target.isOnCourt) {
-            // 欲下場，需確認場上剩下至少 1 人？
             pushHistoryState();
             target.isOnCourt = false;
+            if (selectedCourtPlayer.value?.id === target.id) {
+              clearCourtSelection();
+            }
           } else {
             // 欲上場，檢查是否已滿 5 人
             if (onCourtPlayers.value.length >= 5) {
@@ -1829,132 +1870,89 @@
           saveState();
         }
 
-        // 記錄攻守動作 (Mode B)
+        // 把動作的 delta 套用到球員某一節的統計上；sign 為 +1 是記錄、-1 是撤銷
+        function applyActionDelta(p, q, delta, sign) {
+          if (!p.statsByQuarter) p.statsByQuarter = createQuarterStats();
+          const qStats = p.statsByQuarter[q];
+          if (!qStats) return;
+          Object.keys(delta).forEach(key => {
+            qStats[key] = Math.max(0, (qStats[key] || 0) + sign * delta[key]);
+          });
+          updatePlayerTotals(p);
+        }
+
+        // 記錄攻守動作 (犯規另由 recordFoul 處理，因為要選犯規種類)
         function recordAction(actionType) {
+          const action = ACTIONS[actionType];
+          if (!action) return;
           if (!selectedCourtPlayer.value) {
             showToast("請先點選一位場上球員再登錄數據", 'error');
             return;
           }
-          
-          showFoulSelector.value = false;
-          playClickSound(659.25, 0.08); // E5
-          pushHistoryState();
 
           const p = players.value.find(p => p.id === selectedCourtPlayer.value.id);
           if (!p) return;
 
-          const q = currentQuarter.value;
-          if (!p.statsByQuarter) p.statsByQuarter = createQuarterStats();
-          const qStats = p.statsByQuarter[q];
+          showFoulSelector.value = false;
+          playClickSound(659.25, 0.08); // E5
+          pushHistoryState();
 
-          let text = '';
-          let color = '#a5b4fc'; // 預設亮紫色
+          applyActionDelta(p, currentQuarter.value, action.delta, 1);
 
-          switch (actionType) {
-            case 'FG2_MADE': 
-              qStats.fg2a++; 
-              qStats.fg2m++; 
-              qStats.pts += 2; 
-              text = '2分球投進 (+2)'; 
-              color = '#34d399'; // 綠色
-              break;
-            case 'FG2_MISS': 
-              qStats.fg2a++; 
-              text = '2分出手沒進'; 
-              color = '#f87171'; // 紅色
-              break;
-            case 'FG3_MADE': 
-              qStats.fg3a++; 
-              qStats.fg3m++; 
-              qStats.pts += 3; 
-              text = '3分長射投進 (+3)'; 
-              color = '#10b981'; // 亮綠
-              break;
-            case 'FG3_MISS': 
-              qStats.fg3a++; 
-              text = '3分長射沒進'; 
-              color = '#f87171'; 
-              break;
-            case 'FT_MADE':  
-              qStats.fta++;  
-              qStats.ftm++;  
-              qStats.pts += 1; 
-              text = '罰球命中 (+1)'; 
-              color = '#2dd4bf'; // 青色
-              break;
-            case 'FT_MISS':  
-              qStats.fta++;  
-              text = '罰球沒進'; 
-              color = '#f87171'; 
-              break;
-            case 'OREB':     
-              qStats.oreb++; 
-              text = '搶下進攻籃板'; 
-              color = '#38bdf8'; // 天空藍
-              break;
-            case 'DREB':     
-              qStats.dreb++; 
-              text = '抓下防守籃板'; 
-              color = '#60a5fa'; // 藍色
-              break;
-            case 'AST':      
-              qStats.ast++;  
-              text = '妙傳助攻'; 
-              color = '#818cf8'; // 靛藍
-              break;
-            case 'STL':      
-              qStats.stl++;  
-              text = '神抄截對手'; 
-              color = '#fbbf24'; // 黃色
-              break;
-            case 'BLK':      
-              qStats.blk++;  
-              text = '賞了對手火鍋 (BLK)'; 
-              color = '#c084fc'; // 紫色
-              break;
-            case 'TO':       
-              qStats.to++;   
-              text = '失誤 (Turnover)'; 
-              color = '#fb7185'; // 粉紅
-              break;
-            case 'PF':       
-              qStats.pf++;   
-              teamFouls.value++; 
-              text = '防守犯規 (PF)'; 
-              color = '#fb923c'; // 橘色
-              // 達加罰警告
-              if (teamFouls.value >= 4) {
-                showToast("團隊犯規已達 4 次！下次起將進入加罰狀態！", 'error');
-              }
-              break;
-          }
-
-          updatePlayerTotals(p);
-
-          // 寫入事件 Log
-          logs.value.unshift({
-            id: Date.now(),
-            quarter: currentQuarter.value,
-            timeStr: formattedTime.value,
+          addLog({
             playerNumber: p.number,
             playerName: p.name,
-            actionText: text,
-            color: color,
+            actionText: action.text,
+            color: action.color,
             playerId: p.id,
-            actionType: actionType
+            actionType
           });
 
           // 保留選取狀態，以便該球員若連續得分/失誤時能快速點選
           saveState();
         }
 
+        function recordFoul(foulType) {
+          if (!selectedCourtPlayer.value) return;
+
+          const p = players.value.find(p => p.id === selectedCourtPlayer.value.id);
+          if (!p) return;
+
+          playClickSound(659.25, 0.08); // E5
+          pushHistoryState();
+
+          const q = currentQuarter.value;
+          if (!p.statsByQuarter) p.statsByQuarter = createQuarterStats();
+          const qStats = p.statsByQuarter[q];
+          if (!qStats.foulsList) qStats.foulsList = [];
+
+          qStats.foulsList.push(foulType);
+          qStats.pf = qStats.foulsList.length;
+
+          teamFouls.value++;
+          updatePlayerTotals(p);
+
+          addLog({
+            playerNumber: p.number,
+            playerName: p.name,
+            actionText: `犯規 (${foulType})`,
+            color: '#fb923c', // 橘色
+            playerId: p.id,
+            actionType: 'PF',
+            meta: { foulType }
+          });
+
+          showFoulSelector.value = false;
+
+          if (teamFouls.value >= 4) {
+            showToast("團隊犯規已達 4 次！下次起將進入加罰狀態！", 'error');
+          }
+
+          saveState();
+        }
+
         // 保存狀態歷史 (用於 Undo 堆疊)
         function pushHistoryState() {
-          // 只保留最近 30 次歷史紀錄，避免效能與儲存空間爆炸
-          if (history.value.length >= 30) {
-            history.value.pop();
-          }
-          
           const snapshot = {
             currentQuarter: currentQuarter.value,
             possessionArrow: possessionArrow.value,
@@ -1962,18 +1960,21 @@
             players: JSON.parse(JSON.stringify(players.value)),
             teamFouls: teamFouls.value,
             teamTimeouts: teamTimeouts.value,
-            logs: JSON.parse(JSON.stringify(logs.value))
+            // Log 項目建立後就不會再被修改，只需複製陣列本身，不必逐筆深拷貝
+            logs: toRaw(logs.value).slice()
           };
-          
-          history.value.unshift(snapshot);
+
+          // 只保留最近 HISTORY_LIMIT 次歷史紀錄，避免佔用過多記憶體
+          history.value = [snapshot, ...history.value].slice(0, HISTORY_LIMIT);
         }
 
         // 全面 Undo
         function undo() {
           if (history.value.length === 0) return;
           playClickSound(220, 0.15); // 低音 A3
-          
-          const prevState = history.value.shift();
+
+          const [prevState, ...rest] = history.value;
+          history.value = rest;
 
           // 比賽時鐘與上場時間是真實流逝的時間，不屬於被撤銷的動作。
           // 還原快照時保留目前的值，否則 Undo 會把時鐘倒轉回動作發生的當下。
@@ -1998,7 +1999,8 @@
           teamFouls.value = prevState.teamFouls;
           teamTimeouts.value = prevState.teamTimeouts || 0;
           logs.value = prevState.logs;
-          
+          showFoulSelector.value = false;
+
           // 選取球員在 Undo 後若是已不存在/已下場，就取消選取
           if (selectedCourtPlayer.value) {
             const currentSelected = players.value.find(p => p.id === selectedCourtPlayer.value.id);
@@ -2008,7 +2010,7 @@
               selectedCourtPlayer.value = currentSelected;
             }
           }
-          
+
           saveState();
           showToast("已撤銷上一個動作");
         }
@@ -2018,9 +2020,8 @@
           playClickSound(220, 0.1);
           pushHistoryState();
 
-          // 1. 找到該 Log 指向的球員與動作
           const p = players.value.find(p => p.id === logItem.playerId);
-          
+
           if (logItem.actionType === 'SUB') {
             // 若為換人事件，將 subIn 與 subOut 換回來
             const subOut = players.value.find(p => p.id === logItem.meta.subOutId);
@@ -2032,51 +2033,45 @@
                 selectedCourtPlayer.value = subOut;
               }
             }
-          } else if (p) {
-            const q = logItem.quarter;
-            if (!p.statsByQuarter) p.statsByQuarter = createQuarterStats();
-            const qStats = p.statsByQuarter[q];
-            
+          } else if (logItem.actionType === 'PF') {
+            const qStats = p?.statsByQuarter?.[logItem.quarter];
             if (qStats) {
-              // 扣除對應統計
-              switch (logItem.actionType) {
-                case 'FG2_MADE': qStats.fg2a--; qStats.fg2m--; qStats.pts -= 2; break;
-                case 'FG2_MISS': qStats.fg2a--; break;
-                case 'FG3_MADE': qStats.fg3a--; qStats.fg3m--; qStats.pts -= 3; break;
-                case 'FG3_MISS': qStats.fg3a--; break;
-                case 'FT_MADE':  qStats.fta--;  qStats.ftm--;  qStats.pts -= 1; break;
-                case 'FT_MISS':  qStats.fta--;  break;
-                case 'OREB':     qStats.oreb--; break;
-                case 'DREB':     qStats.dreb--; break;
-                case 'AST':      qStats.ast--;  break;
-                case 'STL':      qStats.stl--;  break;
-                case 'BLK':      qStats.blk--;  break;
-                case 'TO':       qStats.to--;   break;
-                case 'PF': 
-                  if (qStats.foulsList) {
-                    const fType = (logItem.meta && logItem.meta.foulType) ? logItem.meta.foulType : 'P';
-                    const idx = qStats.foulsList.lastIndexOf(fType);
-                    if (idx !== -1) {
-                      qStats.foulsList.splice(idx, 1);
-                    }
-                  }
-                  qStats.pf = qStats.foulsList ? qStats.foulsList.length : 0;
-                  if (String(logItem.quarter) === String(currentQuarter.value)) {
-                    teamFouls.value = Math.max(0, teamFouls.value - 1);
-                  }
-                  break;
+              if (qStats.foulsList) {
+                const fType = logItem.meta?.foulType || 'P';
+                const idx = qStats.foulsList.lastIndexOf(fType);
+                if (idx !== -1) {
+                  qStats.foulsList.splice(idx, 1);
+                }
+              }
+              qStats.pf = qStats.foulsList ? qStats.foulsList.length : 0;
+              if (String(logItem.quarter) === String(currentQuarter.value)) {
+                teamFouls.value = Math.max(0, teamFouls.value - 1);
+              }
+              updatePlayerTotals(p);
+            }
+          } else if (ACTIONS[logItem.actionType]) {
+            // 一般攻守動作：把當初加上去的統計原樣扣回來
+            if (p) applyActionDelta(p, logItem.quarter, ACTIONS[logItem.actionType].delta, -1);
+          } else if (logItem.actionType === 'QUARTER') {
+            // 只有「最近一次換節」才還原節數、時鐘、團犯與暫停次數；
+            // 更早的換節之後已經發生過別的換節，硬改回去會讓目前狀態錯亂，所以只移除該筆 Log
+            const latestQuarterLog = logs.value.find(l => l.actionType === 'QUARTER');
+            if (latestQuarterLog?.id === logItem.id) {
+              stopTimer();
+              currentQuarter.value = logItem.meta.prevQ;
+              if (logItem.meta.prevRemaining !== undefined) {
+                remainingSeconds.value = logItem.meta.prevRemaining;
+                teamFouls.value = logItem.meta.prevTeamFouls || 0;
+                teamTimeouts.value = logItem.meta.prevTeamTimeouts || 0;
               }
             }
-            updatePlayerTotals(p);
-          } else if (logItem.actionType === 'QUARTER') {
-            currentQuarter.value = logItem.meta.prevQ;
           } else if (logItem.actionType === 'POSSESSION') {
             possessionArrow.value = logItem.meta.prev;
           } else if (logItem.actionType === 'TIMEOUT') {
             teamTimeouts.value = Math.max(0, teamTimeouts.value - 1);
           }
 
-          // 2. 從 logs 陣列移除
+          // 從 logs 陣列移除
           const idx = logs.value.findIndex(l => l.id === logItem.id);
           if (idx !== -1) {
             logs.value.splice(idx, 1);
@@ -2090,10 +2085,10 @@
         function addNewPlayer() {
           const num = newPlayerNumber.value.trim();
           const name = newPlayerName.value.trim();
-          
+
           if (!num || !name) return;
 
-          // 檢查背號或姓名是否重複
+          // 檢查背號是否重複
           const duplicate = players.value.find(p => p.number === num);
           if (duplicate) {
             showToast(`已有名單背號為 #${num} 的球員，不可重複`, 'error');
@@ -2103,29 +2098,22 @@
           pushHistoryState();
 
           const maxId = players.value.reduce((max, p) => p.id > max ? p.id : max, 0);
-          
-          // 預設第 1~5 位新增的為 isOnCourt = true，其餘為板凳
-          // 若目前場上已有 5 人，則預設為 isOnCourt = false
-          const shouldBeOnCourt = onCourtPlayers.value.length < 5;
 
           const newPlayer = {
             id: maxId + 1,
             number: num,
             name: name,
-            isOnCourt: shouldBeOnCourt,
-            playedSeconds: 0,
-            stats: createStatsObject(),
-            statsByQuarter: createQuarterStats(),
-            playedSecondsByQuarter: createQuarterSeconds()
+            // 場上未滿 5 人時新球員直接上場，否則先放板凳
+            isOnCourt: onCourtPlayers.value.length < 5
           };
-          updatePlayerTotals(newPlayer);
+          normalizePlayer(newPlayer);
           players.value.push(newPlayer);
 
           sortPlayers();
 
           newPlayerName.value = "";
           newPlayerNumber.value = "";
-          
+
           saveState();
           showToast(`已新增球員 #${num} ${name}`);
         }
@@ -2140,30 +2128,24 @@
             }
           }
 
-          pushHistoryState();
-          
           const idx = players.value.findIndex(p => p.id === player.id);
-          if (idx !== -1) {
-            players.value.splice(idx, 1);
-            if (selectedCourtPlayer.value?.id === player.id) {
-              selectedCourtPlayer.value = null;
-            }
-            saveState();
-            showToast(`已刪除球員 #${player.number}`);
+          if (idx === -1) return;
+
+          pushHistoryState();
+          players.value.splice(idx, 1);
+          if (selectedCourtPlayer.value?.id === player.id) {
+            clearCourtSelection();
           }
+          saveState();
+          showToast(`已刪除球員 #${player.number}`);
         }
 
         function confirmRestoreDefaultRoster() {
           if (confirm("是否確定清除目前名單，並還原為東吳女籃的預設名單？")) {
             pushHistoryState();
-            players.value = JSON.parse(JSON.stringify(defaultPlayers));
-            players.value.forEach(p => {
-              p.statsByQuarter = createQuarterStats();
-              p.playedSecondsByQuarter = createQuarterSeconds();
-              updatePlayerTotals(p);
-            });
+            players.value = createDefaultRoster();
             sortPlayers();
-            selectedCourtPlayer.value = null;
+            clearCourtSelection();
             saveState();
             showToast("已成功載入東吳女籃預設名單！");
           }
@@ -2179,14 +2161,15 @@
         // 執行比賽清空
         function resetGame() {
           showResetModal.value = false;
-          
+          stopTimer();
+
           // 清空所有球員的攻守統計，但保留球員背號與名單、上場狀態
           players.value.forEach(p => {
             p.statsByQuarter = createQuarterStats();
             p.playedSecondsByQuarter = createQuarterSeconds();
             updatePlayerTotals(p);
           });
-          
+
           remainingSeconds.value = 600;
           currentQuarter.value = 1;
           possessionArrow.value = "none";
@@ -2196,13 +2179,8 @@
           localStorage.removeItem("supabase_game_id");
           logs.value = [];
           history.value = [];
-          selectedCourtPlayer.value = null;
-          
-          if (isTimerRunning.value) {
-            isTimerRunning.value = false;
-            clearInterval(gameTimerInterval);
-          }
-          
+          clearCourtSelection();
+
           saveState();
           showToast("比賽數據已全數重設，球員名單已保留。");
         }
@@ -2218,7 +2196,7 @@
           }, 3500);
         }
 
-        // 上場時間格式化 (分:秒)
+        // 時間格式化 (分:秒)
         function formatMinutes(sec) {
           if (!sec) return "00:00";
           const m = Math.floor(sec / 60).toString().padStart(2, '0');
@@ -2241,20 +2219,20 @@
             if (audioCtx.state === 'suspended') {
               audioCtx.resume();
             }
-            
+
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            
+
             osc.connect(gain);
             gain.connect(audioCtx.destination);
-            
+
             osc.frequency.value = freq;
             osc.type = 'sine';
-            
+
             // 漸弱避免爆音
             gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-            
+
             osc.start(audioCtx.currentTime);
             osc.stop(audioCtx.currentTime + duration);
           } catch (e) {
@@ -2262,35 +2240,32 @@
           }
         }
 
+        function currentBoxscoreTabLabel() {
+          return boxscoreTabs.find(t => t.value === boxscoreQuarterTab.value)?.label || "總表";
+        }
+
         // 複製文字報告 (LINE/FB 群組分享格式)
         function copyTextReport() {
           playClickSound(440, 0.05);
-          
-          let tabLabel = boxscoreTabs.find(t => t.value === boxscoreQuarterTab.value)?.label || "總表";
+
+          const tabLabel = currentBoxscoreTabLabel();
+          const rows = boxscoreRows.value;
           let report = `🏀 【${teamName.value}】${tabLabel} 攻守統計報告\n`;
           report += `📅 紀錄日期: ${new Date().toLocaleDateString()}\n`;
-          
-          let displayTotalPoints = 0;
-          players.value.forEach(p => {
-            displayTotalPoints += getDisplayStats(p).pts;
-          });
-          
-          report += `📊 團隊得分: ${displayTotalPoints} 分\n`;
+          report += `📊 團隊得分: ${rows.reduce((sum, row) => sum + row.s.pts, 0)} 分\n`;
           report += `==================================\n`;
           report += `背號 姓名   上場時間 得分 2P(投中/出手) 3P(投中/出手) FT(投中/出手) 助攻 籃板(進/防) 抄截 阻攻 失誤 犯規\n`;
-          
-          players.value.forEach(p => {
+
+          rows.forEach(({ p, s, sec }) => {
             const namePadding = p.name.padEnd(5, ' ');
             const numPadding = `#${p.number}`.padEnd(4, ' ');
-            const minStr = formatMinutes(getDisplaySeconds(p));
-            const stats = getDisplayStats(p);
-            const reb = stats.oreb + stats.dreb;
-            
-            report += `${numPadding} ${namePadding} ${minStr}  ${stats.pts}分  ${stats.fg2m}/${stats.fg2a}  ${stats.fg3m}/${stats.fg3a}  ${stats.ftm}/${stats.fta}  ${stats.ast}次  ${reb}個(${stats.oreb}/${stats.dreb})  ${stats.stl}  ${stats.blk}  ${stats.to}  ${stats.pf}\n`;
+            const reb = s.oreb + s.dreb;
+
+            report += `${numPadding} ${namePadding} ${formatMinutes(sec)}  ${s.pts}分  ${s.fg2m}/${s.fg2a}  ${s.fg3m}/${s.fg3a}  ${s.ftm}/${s.fta}  ${s.ast}次  ${reb}個(${s.oreb}/${s.dreb})  ${s.stl}  ${s.blk}  ${s.to}  ${s.pf}\n`;
           });
-          
+
           report += `==================================\n`;
-          
+
           // 暫停紀錄明細
           const timeoutLogs = logs.value.filter(l => l.actionType === 'TIMEOUT');
           report += `⏱️ 團隊暫停明細:\n`;
@@ -2308,13 +2283,13 @@
           if (boxscoreQuarterTab.value !== 'total') {
             displayLogs = logs.value.filter(l => String(l.quarter) === String(boxscoreQuarterTab.value));
           }
-          
+
           report += `📋 事件簡誌 (最近5筆):\n`;
           displayLogs.slice(0, 5).forEach(l => {
             const pStr = l.playerNumber ? `#${l.playerNumber} ${l.playerName} ` : '';
             report += `-[Q${l.quarter} ${l.timeStr}] ${pStr}${l.actionText}\n`;
           });
-          
+
           report += `\n* 產自【單隊籃球攻守紀錄系統 App】`;
 
           navigator.clipboard.writeText(report).then(() => {
@@ -2325,47 +2300,54 @@
           });
         }
 
-        // 下載 CSV 數據大表
-        function exportCSV() {
-          playClickSound(440, 0.05);
-          
-          let tabLabel = boxscoreTabs.find(t => t.value === boxscoreQuarterTab.value)?.label || "總表";
-          // CSV 標頭
-          let csv = '\uFEFF'; // UTF-8 BOM 防止 Excel 中文亂碼
-          csv += '背號,姓名,上場時間,得分,2分球命中,2分球出手,3分球命中,3分球出手,罰球命中,罰球出手,進攻籃板,防守籃板,助攻,抄截,阻攻,失誤,犯規\n';
-          
-          players.value.forEach(p => {
-            const stats = getDisplayStats(p);
-            csv += `"${p.number}","${p.name}","${formatMinutes(getDisplaySeconds(p))}",${stats.pts},${stats.fg2m},${stats.fg2a},${stats.fg3m},${stats.fg3a},${stats.ftm},${stats.fta},${stats.oreb},${stats.dreb},${stats.ast},${stats.stl},${stats.blk},${stats.to},${stats.pf}\n`;
-          });
-
-          // 建立下載 Blob
-          const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        // 讓瀏覽器把一個 Blob 當成檔案下載
+        function downloadBlob(blob, filename) {
           const link = document.createElement("a");
           const url = URL.createObjectURL(blob);
-          
+
           link.setAttribute("href", url);
-          link.setAttribute("download", `${teamName.value}_${tabLabel}_攻守紀錄統計_${new Date().toISOString().slice(0,10)}.csv`);
+          link.setAttribute("download", filename);
           link.style.visibility = 'hidden';
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
-          
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        // 下載 CSV 數據大表
+        function exportCSV() {
+          playClickSound(440, 0.05);
+
+          const tabLabel = currentBoxscoreTabLabel();
+          // CSV 的文字欄位用雙引號包住，內容裡的雙引號要寫成兩個才不會破壞格式
+          const quote = (text) => `"${String(text).replace(/"/g, '""')}"`;
+          // CSV 標頭
+          let csv = '﻿'; // UTF-8 BOM 防止 Excel 中文亂碼
+          csv += '背號,姓名,上場時間,得分,2分球命中,2分球出手,3分球命中,3分球出手,罰球命中,罰球出手,進攻籃板,防守籃板,助攻,抄截,阻攻,失誤,犯規\n';
+
+          boxscoreRows.value.forEach(({ p, s, sec }) => {
+            csv += `${quote(p.number)},${quote(p.name)},${quote(formatMinutes(sec))},${s.pts},${s.fg2m},${s.fg2a},${s.fg3m},${s.fg3a},${s.ftm},${s.fta},${s.oreb},${s.dreb},${s.ast},${s.stl},${s.blk},${s.to},${s.pf}\n`;
+          });
+
+          const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+          downloadBlob(blob, `${teamName.value}_${tabLabel}_攻守紀錄統計_${new Date().toISOString().slice(0,10)}.csv`);
+
           showToast(`【${tabLabel}】CSV 檔案下載完成！`);
         }
 
         // 生命週期與事件綁定
         onMounted(() => {
           loadState();
-          
+
           // 讀取先前儲存的音效開關
           const savedSound = localStorage.getItem("sound_enabled");
           if (savedSound !== null) {
             isSoundEnabled.value = savedSound === "1";
           }
-          
+
           // 監聽鍵盤快捷鍵以供快速暫停/播放時間 (對齊計時)
           window.addEventListener("keydown", handleGlobalKeydown);
+          document.addEventListener("visibilitychange", handleVisibilityChange);
 
           // 自動嘗試並連接 Supabase
           if (supabaseUrl.value && supabaseKey.value) {
@@ -2374,10 +2356,9 @@
         });
 
         onUnmounted(() => {
-          if (gameTimerInterval) {
-            clearInterval(gameTimerInterval);
-          }
+          stopTimer();
           window.removeEventListener("keydown", handleGlobalKeydown);
+          document.removeEventListener("visibilitychange", handleVisibilityChange);
         });
 
         function handleGlobalKeydown(e) {
@@ -2388,57 +2369,9 @@
           }
         }
 
-        function recordFoul(foulType) {
-          if (!selectedCourtPlayer.value) return;
-          playClickSound(659.25, 0.08); // E5
-          pushHistoryState();
-
-          const p = players.value.find(p => p.id === selectedCourtPlayer.value.id);
-          if (!p) return;
-
-          const q = currentQuarter.value;
-          if (!p.statsByQuarter) p.statsByQuarter = createQuarterStats();
-          const qStats = p.statsByQuarter[q];
-          if (!qStats.foulsList) qStats.foulsList = [];
-
-          qStats.foulsList.push(foulType);
-          qStats.pf = qStats.foulsList.length;
-          
-          teamFouls.value++;
-          updatePlayerTotals(p);
-
-          // 寫入事件 Log
-          logs.value.unshift({
-            id: Date.now(),
-            quarter: currentQuarter.value,
-            timeStr: formattedTime.value,
-            playerNumber: p.number,
-            playerName: p.name,
-            actionText: `犯規 (${foulType})`,
-            color: '#fb923c', // 橘色
-            playerId: p.id,
-            actionType: 'PF',
-            meta: { foulType }
-          });
-
-          showFoulSelector.value = false;
-
-          if (teamFouls.value >= 4) {
-            showToast("團隊犯規已達 4 次！下次起將進入加罰狀態！", 'error');
-          }
-
-          saveState();
-        }
-
-        function displayQuarterFouls(player, q) {
-          if (q === 'total') {
-            return player.stats.pf || 0;
-          }
-          const qStats = player.statsByQuarter?.[q];
-          if (!qStats || !qStats.foulsList || qStats.foulsList.length === 0) {
-            return "-";
-          }
-          return qStats.foulsList.join(",");
+        // 切到別的 App 或鎖定螢幕時立刻存檔：手機/平板可能直接把背景分頁回收，來不及等下一次定時存檔
+        function handleVisibilityChange() {
+          if (document.hidden) saveState();
         }
 
         function formatQuarterFouls(player, q) {
@@ -2449,43 +2382,25 @@
           return qStats.foulsList.join(",");
         }
 
-        function qFoulsString(player) {
-          const qs = [1, 2, 3, 4];
-          const parts = qs.map(q => {
-            const list = player.statsByQuarter?.[q]?.foulsList;
-            return (list && list.length > 0) ? list.join(",") : "-";
-          });
-          if (player.statsByQuarter?.['OT']?.foulsList?.length > 0) {
-            parts.push(player.statsByQuarter['OT'].foulsList.join(","));
-          }
-          return parts.join("/");
-        }
-
         function getDisplaySeconds(player) {
           if (boxscoreQuarterTab.value === 'total') {
             return player.playedSeconds || 0;
           }
-          if (!player.playedSecondsByQuarter) {
-            return 0;
-          }
-          return player.playedSecondsByQuarter[boxscoreQuarterTab.value] || 0;
+          return player.playedSecondsByQuarter?.[boxscoreQuarterTab.value] || 0;
         }
 
         function getDisplayStats(player) {
           if (boxscoreQuarterTab.value === 'total') {
             return player.stats;
           }
-          if (!player.statsByQuarter || !player.statsByQuarter[boxscoreQuarterTab.value]) {
-            return createStatsObject();
-          }
-          return player.statsByQuarter[boxscoreQuarterTab.value];
+          return player.statsByQuarter?.[boxscoreQuarterTab.value] || EMPTY_STATS;
         }
 
         return {
-          teamName, currentQuarter, quarters, possessionArrow, teamJerseyColor,
-          activeTab, remainingSeconds, isTimerRunning, isEditingTime, tempTimeInput, timeInputRef,
+          teamName, currentQuarter, quarters, possessionArrow,
+          activeTab, isTimerRunning, isEditingTime, tempTimeInput, timeInputRef,
           isSoundEnabled, showResetModal, toastMessage, toastType, players, selectedCourtPlayer,
-          teamFouls, logs, history, jerseyColors, newPlayerName, newPlayerNumber,
+          teamFouls, logs, history, newPlayerName, newPlayerNumber,
           onCourtPlayers, benchPlayers, teamTotalPoints, formattedTime,
           confirmTimeEdit, changeQuarter, togglePossession, setPossession,
           selectCourtPlayer, clearCourtSelection, handleBenchPlayerClick, togglePlayerCourtStatus,
@@ -2493,9 +2408,10 @@
           confirmResetGame, resetGame, formatMinutes, toggleSound, copyTextReport, exportCSV, saveState,
           toggleTimer, adjustTime, teamTimeouts, recordTimeout, maxTimeouts,
           supabaseUrl, supabaseKey, isSupabaseConnected, isSupabaseSyncing, supabaseGamesList, isAutoSyncEnabled, currentGameCloudId,
+          syncError, lastSyncedAt,
           testSupabaseConnection, disconnectSupabase, saveToSupabase, fetchCloudGames, loadGameFromCloud, deleteGameFromCloud, toggleAutoSync, onPlayerNumberChange, confirmRestoreDefaultRoster,
-          boxscoreQuarterTab, boxscoreTabs, getDisplaySeconds, getDisplayStats,
-          showFoulSelector, recordFoul, displayQuarterFouls, formatQuarterFouls, qFoulsString,
+          boxscoreQuarterTab, boxscoreTabs, boxscoreRows,
+          showFoulSelector, recordFoul, formatQuarterFouls,
           isBoxscoreMaximized, confirmSavedBeforeReset
         };
       }
