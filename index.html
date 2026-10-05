@@ -3389,7 +3389,7 @@
           });
         }
 
-        // 單層表頭、從第 1 列開始的簡單表格 (事件紀錄與給程式分析用的長表)
+        // 單層表頭、從第 1 列開始的簡單表格 (事件紀錄)
         function writeExcelFlatTable(ws, headers, rows, leftAlignFrom = Infinity) {
           ws.columns = headers.map(([, width]) => ({ width }));
           headers.forEach(([title], i) => {
@@ -3405,7 +3405,7 @@
             });
           });
           if (rows.length > 0) {
-            // 加上篩選按鈕，方便在 Excel 裡只看某一節、某場比賽或某位球員
+            // 加上篩選按鈕，方便在 Excel 裡只看某一節或某位球員
             ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: headers.length } };
           }
         }
@@ -3454,41 +3454,7 @@
           if (rows.length === 0) ws.addRow(["", "", "", "", "", "（本場尚無事件紀錄）"]);
         }
 
-        // 欄位說明工作表：讓沒用過這個系統的人也看得懂每一欄
-        function addExcelLegendSheet(workbook, extraItems = []) {
-          const ws = workbook.addWorksheet("欄位說明");
-          ws.columns = [{ width: 26 }, { width: 86 }];
-          const legend = [
-            ...extraItems,
-            ["上場時間", "分:秒。計時器跑動期間，在場上的球員會自動累計。"],
-            ["得分", "2分球命中 ×2 ＋ 3分球命中 ×3 ＋ 罰球命中 ×1。"],
-            ["命中 / 出手", "命中是投進的次數，出手是投籃總次數（投進＋沒進）。"],
-            ["命中率", "命中 ÷ 出手。沒有出手時顯示「-」。"],
-            ["籃板", "進攻籃板、防守籃板，以及兩者相加的合計。"],
-            ["助攻 / 抄截 / 阻攻 / 失誤", "各項的累計次數。"],
-            ["犯規次數", "個人犯規的累計次數。"],
-            ["犯規明細", "紀錄時所選的犯規代號（P、P1、P2、P3）。總表會標出是哪一節犯的。"],
-            ["各節得分", "該球員在每一節各得幾分，只出現在全場總表。"],
-            ["全隊合計", "數據表最後的粗體列，是全隊所有球員加總。"],
-            ["對手", "只記錄對手的隊名與得分。對手得分顯示「-」代表這場沒有記錄對手得分，因此不判定勝負。"],
-            ["事件紀錄", "整場比賽依發生順序列出的每一筆紀錄；「該節剩餘時間」是事件發生當下的比賽時鐘。"]
-          ];
-          ["欄位", "說明"].forEach((title, i) => {
-            const cell = ws.getCell(1, i + 1);
-            cell.value = title;
-            styleExcelHeaderCell(cell, "FF312E81");
-          });
-          legend.forEach(item => {
-            const excelRow = ws.addRow(item);
-            excelRow.getCell(1).font = { bold: true };
-            excelRow.eachCell(cell => {
-              cell.alignment = { vertical: "middle", wrapText: true };
-              cell.border = EXCEL_ALL_BORDERS;
-            });
-          });
-        }
-
-        // 單場比賽的活頁簿：全場總表 + 有打到的各節 + 事件紀錄 + 欄位說明
+        // 單場比賽的活頁簿：全場總表 + 有打到的各節 + 事件紀錄
         function buildExcelWorkbook(ExcelJS, g) {
           const workbook = new ExcelJS.Workbook();
           workbook.creator = "單隊籃球攻守紀錄系統";
@@ -3504,7 +3470,6 @@
             }
           });
           addExcelLogSheet(workbook, g);
-          addExcelLegendSheet(workbook);
           return workbook;
         }
 
@@ -3520,7 +3485,7 @@
           return name;
         }
 
-        // 賽季活頁簿：賽季總覽 + 球員累計 + 逐場球員數據 (長表) + 每場比賽各一張 + 欄位說明
+        // 賽季活頁簿：賽季總覽 + 球員累計 + 每場比賽各一張
         function buildSeasonWorkbook(ExcelJS, team, games) {
           const workbook = new ExcelJS.Workbook();
           workbook.creator = "單隊籃球攻守紀錄系統";
@@ -3528,7 +3493,7 @@
 
           // 依日期由早到晚
           const ordered = [...games].sort((a, b) => (a.date || "").localeCompare(b.date || "") || (a.savedAt || 0) - (b.savedAt || 0));
-          const usedNames = new Set(["賽季總覽", "球員累計", "逐場球員數據", "欄位說明"]);
+          const usedNames = new Set(["賽季總覽", "球員累計"]);
           const HEADER_ROW = 4;
           const frozen = (xSplit) => ({
             views: [{ state: "frozen", xSplit, ySplit: HEADER_ROW + 1 }],
@@ -3618,36 +3583,12 @@
             { number: "", name: "全隊合計", gp: ordered.length, sec: playerRows.reduce((sum, row) => sum + row.sec, 0), s: seasonStats }
           ]);
 
-          // --- 3. 逐場球員數據 (長表)：每位球員每場一列、單層表頭，方便用樞紐分析表或 pandas 分析 ---
-          const longSheet = workbook.addWorksheet("逐場球員數據", { views: [{ state: "frozen", ySplit: 1 }] });
-          const longHeaders = [
-            ["比賽日期", 12], ["對手", 18], ["勝負", 7], ["背號", 7], ["姓名", 14], ["有出賽", 8], ["上場秒數", 10], ["得分", 7],
-            ["2分命中", 9], ["2分出手", 9], ["3分命中", 9], ["3分出手", 9], ["罰球命中", 9], ["罰球出手", 9],
-            ["進攻籃板", 9], ["防守籃板", 9], ["助攻", 7], ["抄截", 7], ["阻攻", 7], ["失誤", 7], ["犯規", 7]
-          ];
-          const longRows = [];
-          ordered.forEach(g => g.players.forEach(p => {
-            const s = p.stats;
-            longRows.push([
-              g.date || "", g.opponentName || "", gameResult(g), excelJersey(p.number), p.name,
-              playerAppeared(p) ? "是" : "否", p.playedSeconds || 0, s.pts,
-              s.fg2m, s.fg2a, s.fg3m, s.fg3a, s.ftm, s.fta, s.oreb, s.dreb, s.ast, s.stl, s.blk, s.to, s.pf
-            ]);
-          }));
-          writeExcelFlatTable(longSheet, longHeaders, longRows);
-
-          // --- 4. 每場比賽各一張全場數據表 ---
+          // --- 3. 每場比賽各一張全場數據表 ---
           ordered.forEach(g => {
             const name = uniqueSheetName(`${(g.date || "").slice(5)} vs ${g.opponentName || "未填對手"}`, usedNames);
             addExcelStatsSheet(workbook, g, name, "total");
           });
 
-          addExcelLegendSheet(workbook, [
-            ["賽季總覽", "每場比賽一列的全隊數據。最後兩列是整季合計與場均。"],
-            ["球員累計", "每位球員整季的加總。「出賽場數」是有上場時間或有任何一項數據的場數。"],
-            ["逐場球員數據", "每位球員每場一列的原始數據，適合用篩選、樞紐分析表或程式做進一步分析。"],
-            ["各場工作表", "名稱為「月-日 vs 對手」，內容是該場的全場數據表。"]
-          ]);
           return workbook;
         }
 
