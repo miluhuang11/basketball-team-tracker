@@ -692,10 +692,17 @@
                   <i class="fa-solid fa-copy"></i> 複製文字報告
                 </button>
                 <button 
+                  @click="exportExcel" 
+                  :disabled="isExportingExcel"
+                  class="flex-1 bg-emerald-700 hover:bg-emerald-600 border border-emerald-600 text-white text-xs font-semibold py-2 rounded-xl transition flex items-center justify-center gap-1.5 disabled:opacity-60"
+                >
+                  <i :class="isExportingExcel ? 'fa-solid fa-circle-notch animate-spin' : 'fa-solid fa-file-excel'"></i> 下載 Excel
+                </button>
+                <button 
                   @click="exportCSV" 
                   class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold py-2 rounded-xl transition flex items-center justify-center gap-1.5"
                 >
-                  <i class="fa-solid fa-file-csv"></i> 下載 CSV 檔
+                  <i class="fa-solid fa-file-csv"></i> 下載 CSV
                 </button>
               </div>
             </div>
@@ -1033,6 +1040,8 @@
         const QUARTER_KEYS = [1, 2, 3, 4, "OT"];
         const HISTORY_LIMIT = 30;        // 記憶體中保留的 Undo 步數
         const HISTORY_PERSIST_LIMIT = 5; // 寫進 localStorage 的 Undo 步數 (重新整理頁面後還能 Undo 的次數)
+        const QUARTER_LABELS = { 1: "第一節", 2: "第二節", 3: "第三節", 4: "第四節", "OT": "延長賽" };
+        const EXCELJS_URL = "https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js";
 
         // 攻守動作定義：delta 是該動作對統計欄位的增減，「記錄」與「撤銷單筆 Log」共用同一份，確保兩邊一定對得起來
         const ACTIONS = {
@@ -1061,6 +1070,7 @@
         const showFoulSelector = ref(false);
         const isBoxscoreMaximized = ref(false);
         const confirmSavedBeforeReset = ref(false);
+        const isExportingExcel = ref(false);
 
         // 計時器相關
         const remainingSeconds = ref(600); // 預設 10 分鐘 (600秒)
@@ -2300,6 +2310,12 @@
           });
         }
 
+        // 檔名用的本地日期 YYYY-MM-DD (toISOString 是 UTC 時間，台灣早上 8 點前會變成前一天)
+        function todayString() {
+          const d = new Date();
+          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
         // 讓瀏覽器把一個 Blob 當成檔案下載
         function downloadBlob(blob, filename) {
           const link = document.createElement("a");
@@ -2330,9 +2346,273 @@
           });
 
           const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-          downloadBlob(blob, `${teamName.value}_${tabLabel}_攻守紀錄統計_${new Date().toISOString().slice(0,10)}.csv`);
+          downloadBlob(blob, `${teamName.value}_${tabLabel}_攻守紀錄統計_${todayString()}.csv`);
 
           showToast(`【${tabLabel}】CSV 檔案下載完成！`);
+        }
+
+        // ExcelJS 檔案將近 1MB，只在第一次按「下載 Excel」時才載入，不拖慢開啟頁面的速度
+        let excelJsPromise = null;
+        function loadExcelJs() {
+          if (window.ExcelJS) return Promise.resolve(window.ExcelJS);
+          if (!excelJsPromise) {
+            excelJsPromise = new Promise((resolve, reject) => {
+              const script = document.createElement("script");
+              script.src = EXCELJS_URL;
+              script.crossOrigin = "anonymous";
+              script.onload = () => resolve(window.ExcelJS);
+              script.onerror = () => {
+                // 載入失敗時清掉，下次按按鈕才會重新嘗試
+                excelJsPromise = null;
+                script.remove();
+                reject(new Error("ExcelJS 載入失敗"));
+              };
+              document.head.appendChild(script);
+            });
+          }
+          return excelJsPromise;
+        }
+
+        // Excel 數據表的欄位定義：group 相同的相鄰欄位會合併成一個大表頭 (例如「2分球」底下有 命中/出手/命中率)
+        const pctOf = (made, attempt) => (row) => row.s[attempt] ? row.s[made] / row.s[attempt] : "-";
+        const EXCEL_STAT_COLUMNS = [
+          { group: "球員", title: "背號", width: 7, get: row => row.number },
+          { group: "球員", title: "姓名", width: 13, get: row => row.name, align: "left" },
+          { title: "上場時間", width: 10, get: row => formatMinutes(row.sec) },
+          { title: "得分", width: 7, get: row => row.s.pts, bold: true },
+          { group: "2分球", title: "命中", get: row => row.s.fg2m },
+          { group: "2分球", title: "出手", get: row => row.s.fg2a },
+          { group: "2分球", title: "命中率", width: 9, get: pctOf("fg2m", "fg2a"), pct: true },
+          { group: "3分球", title: "命中", get: row => row.s.fg3m },
+          { group: "3分球", title: "出手", get: row => row.s.fg3a },
+          { group: "3分球", title: "命中率", width: 9, get: pctOf("fg3m", "fg3a"), pct: true },
+          { group: "罰球", title: "命中", get: row => row.s.ftm },
+          { group: "罰球", title: "出手", get: row => row.s.fta },
+          { group: "罰球", title: "命中率", width: 9, get: pctOf("ftm", "fta"), pct: true },
+          { group: "籃板", title: "進攻", get: row => row.s.oreb },
+          { group: "籃板", title: "防守", get: row => row.s.dreb },
+          { group: "籃板", title: "合計", get: row => row.s.oreb + row.s.dreb, bold: true },
+          { title: "助攻", get: row => row.s.ast },
+          { title: "抄截", get: row => row.s.stl },
+          { title: "阻攻", get: row => row.s.blk },
+          { title: "失誤", get: row => row.s.to },
+          { group: "犯規", title: "次數", get: row => row.s.pf },
+          { group: "犯規", title: "明細", width: 26, get: row => row.foulDetail, align: "left" }
+        ];
+        // 只有全場總表才會多出「各節得分」
+        const EXCEL_QUARTER_POINT_COLUMNS = QUARTER_KEYS.map(q => ({
+          group: "各節得分", title: QUARTER_LABELS[q], width: 8, get: row => row.qPts[q]
+        }));
+
+        // 整理某一張數據表要用的資料列：每位球員一列，外加一列全隊合計
+        function buildExcelRows(tab) {
+          const rows = players.value.map(p => {
+            const s = getStatsFor(p, tab);
+            const qPts = {};
+            QUARTER_KEYS.forEach(q => { qPts[q] = p.statsByQuarter?.[q]?.pts || 0; });
+            // 總表的犯規明細標出是哪一節犯的，分節表只列出該節的犯規代號
+            const foulDetail = tab === 'total'
+              ? QUARTER_KEYS
+                  .filter(q => p.statsByQuarter?.[q]?.foulsList?.length)
+                  .map(q => `${QUARTER_LABELS[q]} ${p.statsByQuarter[q].foulsList.join(",")}`)
+                  .join("；")
+              : (s.foulsList || []).join(",");
+            return {
+              // 純數字背號存成數字，在 Excel 裡才能正確排序；"00"、"07" 這類保留文字
+              number: /^(0|[1-9]\d*)$/.test(p.number) ? Number(p.number) : p.number,
+              name: p.name,
+              sec: getSecondsFor(p, tab),
+              s, qPts, foulDetail
+            };
+          });
+
+          const total = { number: "", name: "全隊合計", sec: 0, s: createStatsObject(), qPts: {}, foulDetail: "" };
+          QUARTER_KEYS.forEach(q => { total.qPts[q] = 0; });
+          rows.forEach(row => {
+            total.sec += row.sec;
+            Object.keys(total.s).forEach(key => {
+              if (key !== 'foulsList') total.s[key] += row.s[key] || 0;
+            });
+            QUARTER_KEYS.forEach(q => { total.qPts[q] += row.qPts[q]; });
+          });
+          return { rows, total };
+        }
+
+        const EXCEL_BORDER = { style: "thin", color: { argb: "FFCBD5E1" } };
+        const EXCEL_ALL_BORDERS = { top: EXCEL_BORDER, left: EXCEL_BORDER, bottom: EXCEL_BORDER, right: EXCEL_BORDER };
+        const excelFill = (argb) => ({ type: "pattern", pattern: "solid", fgColor: { argb } });
+
+        function styleExcelHeaderCell(cell, argb) {
+          cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+          cell.fill = excelFill(argb);
+          cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+          cell.border = EXCEL_ALL_BORDERS;
+        }
+
+        // 新增一張數據工作表 (全場總表或某一節)
+        function addExcelStatsSheet(workbook, sheetName, tab) {
+          const columns = tab === 'total' ? [...EXCEL_STAT_COLUMNS, ...EXCEL_QUARTER_POINT_COLUMNS] : EXCEL_STAT_COLUMNS;
+          const { rows, total } = buildExcelRows(tab);
+          const HEADER_ROW = 4; // 第 4、5 列是兩層表頭，第 6 列起是球員資料
+
+          const ws = workbook.addWorksheet(sheetName, {
+            // 凍結前 2 欄 (背號、姓名) 與表頭，往右或往下捲動時仍看得到是誰、是哪一欄
+            views: [{ state: "frozen", xSplit: 2, ySplit: HEADER_ROW + 1 }],
+            pageSetup: { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
+          });
+          ws.columns = columns.map(c => ({ width: c.width || 7 }));
+
+          // 標題與比賽資訊 (不合併儲存格，避免跨過凍結欄位時被切斷)
+          const titleCell = ws.getCell(1, 1);
+          titleCell.value = `${teamName.value}　攻守紀錄　${sheetName}`;
+          titleCell.font = { bold: true, size: 16 };
+          ws.getRow(1).height = 26;
+          const infoCell = ws.getCell(2, 1);
+          infoCell.value = `紀錄日期：${new Date().toLocaleDateString()}　｜　${tab === 'total' ? '全場' : '本節'}全隊得分：${total.s.pts} 分`;
+          infoCell.font = { color: { argb: "FF475569" } };
+
+          // 兩層表頭：有 group 的相鄰欄位橫向合併成大表頭，沒有 group 的欄位直向合併兩列
+          let col = 0;
+          while (col < columns.length) {
+            const group = columns[col].group;
+            let end = col;
+            if (group) {
+              while (end + 1 < columns.length && columns[end + 1].group === group) end++;
+              ws.mergeCells(HEADER_ROW, col + 1, HEADER_ROW, end + 1);
+              ws.getCell(HEADER_ROW, col + 1).value = group;
+              for (let c = col; c <= end; c++) ws.getCell(HEADER_ROW + 1, c + 1).value = columns[c].title;
+            } else {
+              ws.mergeCells(HEADER_ROW, col + 1, HEADER_ROW + 1, col + 1);
+              ws.getCell(HEADER_ROW, col + 1).value = columns[col].title;
+            }
+            col = end + 1;
+          }
+          for (let c = 1; c <= columns.length; c++) {
+            styleExcelHeaderCell(ws.getCell(HEADER_ROW, c), "FF312E81");
+            styleExcelHeaderCell(ws.getCell(HEADER_ROW + 1, c), "FF4338CA");
+          }
+          ws.getRow(HEADER_ROW).height = 20;
+          ws.getRow(HEADER_ROW + 1).height = 20;
+
+          // 資料列 + 最後一列全隊合計
+          [...rows, total].forEach((row, i) => {
+            const isTotal = row === total;
+            const excelRow = ws.getRow(HEADER_ROW + 2 + i);
+            columns.forEach((c, ci) => {
+              const cell = excelRow.getCell(ci + 1);
+              cell.value = c.get(row);
+              if (c.pct && typeof cell.value === 'number') cell.numFmt = "0.0%";
+              cell.alignment = { horizontal: c.align || "center", vertical: "middle" };
+              cell.border = EXCEL_ALL_BORDERS;
+              cell.font = { bold: isTotal || !!c.bold };
+              if (isTotal) cell.fill = excelFill("FFFEF3C7");
+              else if (i % 2 === 1) cell.fill = excelFill("FFF1F5F9");
+            });
+          });
+        }
+
+        // 事件紀錄工作表：依發生順序由先到後
+        function addExcelLogSheet(workbook) {
+          const ws = workbook.addWorksheet("事件紀錄", { views: [{ state: "frozen", ySplit: 1 }] });
+          const headers = [["序號", 7], ["節次", 9], ["該節剩餘時間", 14], ["背號", 7], ["姓名", 13], ["事件", 50]];
+          ws.columns = headers.map(([, width]) => ({ width }));
+          headers.forEach(([title], i) => {
+            const cell = ws.getCell(1, i + 1);
+            cell.value = title;
+            styleExcelHeaderCell(cell, "FF312E81");
+          });
+
+          const ordered = [...logs.value].reverse();
+          ordered.forEach((l, i) => {
+            const excelRow = ws.addRow([
+              i + 1,
+              QUARTER_LABELS[l.quarter] || String(l.quarter),
+              l.timeStr,
+              l.playerNumber ?? "",
+              l.playerName ?? "",
+              l.actionText
+            ]);
+            excelRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+              cell.alignment = { horizontal: colNumber >= 5 ? "left" : "center", vertical: "middle" };
+              cell.border = EXCEL_ALL_BORDERS;
+            });
+          });
+          if (ordered.length === 0) {
+            ws.addRow(["", "", "", "", "", "（本場尚無事件紀錄）"]);
+          } else {
+            // 加上篩選按鈕，方便在 Excel 裡只看某一節或某位球員
+            ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: headers.length } };
+          }
+        }
+
+        // 欄位說明工作表：讓沒用過這個系統的人也看得懂每一欄
+        function addExcelLegendSheet(workbook) {
+          const ws = workbook.addWorksheet("欄位說明");
+          ws.columns = [{ width: 26 }, { width: 80 }];
+          const legend = [
+            ["上場時間", "分:秒。計時器跑動期間，在場上的球員會自動累計。"],
+            ["得分", "2分球命中 ×2 ＋ 3分球命中 ×3 ＋ 罰球命中 ×1。"],
+            ["命中 / 出手", "命中是投進的次數，出手是投籃總次數（投進＋沒進）。"],
+            ["命中率", "命中 ÷ 出手。沒有出手時顯示「-」。"],
+            ["籃板", "進攻籃板、防守籃板，以及兩者相加的合計。"],
+            ["助攻 / 抄截 / 阻攻 / 失誤", "各項的累計次數。"],
+            ["犯規次數", "個人犯規的累計次數。"],
+            ["犯規明細", "紀錄時所選的犯規代號（P、P1、P2、P3）。總表會標出是哪一節犯的。"],
+            ["各節得分", "該球員在每一節各得幾分，只出現在全場總表。"],
+            ["全隊合計", "每張數據表的最後一列，是全隊所有球員加總。"],
+            ["事件紀錄", "整場比賽依發生順序列出的每一筆紀錄；「該節剩餘時間」是事件發生當下的比賽時鐘。"]
+          ];
+          ["欄位", "說明"].forEach((title, i) => {
+            const cell = ws.getCell(1, i + 1);
+            cell.value = title;
+            styleExcelHeaderCell(cell, "FF312E81");
+          });
+          legend.forEach(item => {
+            const excelRow = ws.addRow(item);
+            excelRow.getCell(1).font = { bold: true };
+            excelRow.eachCell(cell => {
+              cell.alignment = { vertical: "middle", wrapText: true };
+              cell.border = EXCEL_ALL_BORDERS;
+            });
+          });
+        }
+
+        function buildExcelWorkbook(ExcelJS) {
+          const workbook = new ExcelJS.Workbook();
+          workbook.creator = "單隊籃球攻守紀錄系統";
+          workbook.created = new Date();
+
+          addExcelStatsSheet(workbook, "全場總表", "total");
+          QUARTER_KEYS.forEach(q => {
+            // 還沒打到的節次不產生工作表，避免多出全是 0 的表
+            const hasData = players.value.some(p => (p.playedSecondsByQuarter?.[q] || 0) > 0)
+              || logs.value.some(l => String(l.quarter) === String(q));
+            if (hasData || String(q) === String(currentQuarter.value)) {
+              addExcelStatsSheet(workbook, QUARTER_LABELS[q], q);
+            }
+          });
+          addExcelLogSheet(workbook);
+          addExcelLegendSheet(workbook);
+          return workbook;
+        }
+
+        // 下載 Excel 活頁簿 (全場總表 + 各節 + 事件紀錄 + 欄位說明)
+        async function exportExcel() {
+          if (isExportingExcel.value) return;
+          playClickSound(440, 0.05);
+          isExportingExcel.value = true;
+          try {
+            const ExcelJS = await loadExcelJs();
+            const buffer = await buildExcelWorkbook(ExcelJS).xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+            downloadBlob(blob, `${teamName.value}_攻守紀錄_${todayString()}.xlsx`);
+            showToast("Excel 檔案下載完成！");
+          } catch (e) {
+            console.error("匯出 Excel 失敗", e);
+            showToast("匯出 Excel 失敗，請確認網路連線後再試一次 (或先改用 CSV)", 'error');
+          } finally {
+            isExportingExcel.value = false;
+          }
         }
 
         // 生命週期與事件綁定
@@ -2382,18 +2662,27 @@
           return qStats.foulsList.join(",");
         }
 
-        function getDisplaySeconds(player) {
-          if (boxscoreQuarterTab.value === 'total') {
+        // tab 為 'total' 取全場，否則取該節 (1~4 或 'OT')
+        function getSecondsFor(player, tab) {
+          if (tab === 'total') {
             return player.playedSeconds || 0;
           }
-          return player.playedSecondsByQuarter?.[boxscoreQuarterTab.value] || 0;
+          return player.playedSecondsByQuarter?.[tab] || 0;
+        }
+
+        function getStatsFor(player, tab) {
+          if (tab === 'total') {
+            return player.stats;
+          }
+          return player.statsByQuarter?.[tab] || EMPTY_STATS;
+        }
+
+        function getDisplaySeconds(player) {
+          return getSecondsFor(player, boxscoreQuarterTab.value);
         }
 
         function getDisplayStats(player) {
-          if (boxscoreQuarterTab.value === 'total') {
-            return player.stats;
-          }
-          return player.statsByQuarter?.[boxscoreQuarterTab.value] || EMPTY_STATS;
+          return getStatsFor(player, boxscoreQuarterTab.value);
         }
 
         return {
@@ -2405,7 +2694,7 @@
           confirmTimeEdit, changeQuarter, togglePossession, setPossession,
           selectCourtPlayer, clearCourtSelection, handleBenchPlayerClick, togglePlayerCourtStatus,
           recordAction, undo, deleteSpecificLog, addNewPlayer, removePlayer,
-          confirmResetGame, resetGame, formatMinutes, toggleSound, copyTextReport, exportCSV, saveState,
+          confirmResetGame, resetGame, formatMinutes, toggleSound, copyTextReport, exportCSV, exportExcel, isExportingExcel, saveState,
           toggleTimer, adjustTime, teamTimeouts, recordTimeout, maxTimeouts,
           supabaseUrl, supabaseKey, isSupabaseConnected, isSupabaseSyncing, supabaseGamesList, isAutoSyncEnabled, currentGameCloudId,
           syncError, lastSyncedAt,
