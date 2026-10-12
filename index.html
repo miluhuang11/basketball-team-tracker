@@ -3230,10 +3230,10 @@
         // Excel 數據表的欄位定義：group 相同的相鄰欄位會合併成一個大表頭 (例如「2分球」底下有 命中/出手/命中率)
         const pctOf = (made, attempt) => (row) => row.s[attempt] ? row.s[made] / row.s[attempt] : "-";
         const EXCEL_STAT_COLUMNS = [
-          { group: "球員", title: "背號", width: 7, get: row => row.number },
+          { id: "number", group: "球員", title: "背號", width: 7, get: row => row.number },
           { id: "name", group: "球員", title: "姓名", width: 14, get: row => row.name, align: "left" },
-          { title: "上場時間", width: 10, get: row => formatMinutes(row.sec) },
-          { id: "pts", title: "得分", width: 7, get: row => row.s.pts, bold: true },
+          { id: "time", title: "上場時間", width: 10, get: row => formatMinutes(row.sec) },
+          { id: "pts", title: "得分", width: 8, get: row => row.s.pts, bold: true },
           { group: "2分球", title: "命中", get: row => row.s.fg2m },
           { group: "2分球", title: "出手", get: row => row.s.fg2a },
           { group: "2分球", title: "命中率", width: 9, get: pctOf("fg2m", "fg2a"), pct: true },
@@ -3253,13 +3253,21 @@
         ];
         const EXCEL_FOUL_COLUMNS = [
           { group: "犯規", title: "次數", get: row => row.s.pf },
-          { group: "犯規", title: "明細", width: 26, get: row => row.foulDetail, align: "left" }
+          { group: "犯規", title: "明細", width: 26, get: row => row.foulDetail, align: "left", wrap: true }
         ];
-        const EXCEL_FOUL_COUNT_COLUMN = { title: "犯規", get: row => row.s.pf };
-        // 只有全場總表才會多出「各節得分」
-        const EXCEL_QUARTER_POINT_COLUMNS = QUARTER_KEYS.map(q => ({
+        const EXCEL_FOUL_COUNT_COLUMN = { title: "犯規", get: row => row.s.pf, sep: true };
+        // 單場數據表才有「各節得分」，放在得分旁邊
+        const excelQuarterPointColumns = (quarters) => quarters.map(q => ({
           id: `q${q}`, group: "各節得分", title: QUARTER_LABELS[q], width: 8, get: row => row.qPts[q]
         }));
+        // 這場比賽要列出的節次：四節固定列出，延長賽有打才列
+        function excelQuartersOf(g) {
+          const hasOT = g.currentQuarter === "OT"
+            || (g.opponentPointsByQuarter?.OT || 0) > 0
+            || g.players.some(p => (p.playedSecondsByQuarter?.OT || 0) > 0)
+            || (g.logs || []).some(l => String(l.quarter) === "OT");
+          return QUARTER_KEYS.filter(q => q !== "OT" || hasOT);
+        }
         // 2分球 ~ 失誤：以「全隊」為單位的表 (賽季總覽) 也會用到這一段
         const EXCEL_SHOOTING_TO_TURNOVER_COLUMNS = EXCEL_STAT_COLUMNS.slice(4);
 
@@ -3293,21 +3301,26 @@
           return "平";
         }
 
-        // 整理某一場比賽、某一張數據表要用的資料列：每位球員一列，外加一列全隊合計
-        function buildExcelRows(g, tab) {
+        // 整理某一場比賽全場數據表要用的資料列：每位球員一列，外加一列全隊合計
+        function buildExcelRows(g) {
           const rows = g.players.map(p => {
-            const s = getStatsFor(p, tab);
             const qPts = {};
             QUARTER_KEYS.forEach(q => { qPts[q] = p.statsByQuarter?.[q]?.pts || 0; });
-            // 總表的犯規明細標出是哪一節犯的，分節表只列出該節的犯規代號
-            const foulDetail = tab === 'total'
-              ? QUARTER_KEYS
-                  .filter(q => p.statsByQuarter?.[q]?.foulsList?.length)
-                  .map(q => `${QUARTER_LABELS[q]} ${p.statsByQuarter[q].foulsList.join(",")}`)
-                  .join("；")
-              : (s.foulsList || []).join(",");
-            return { number: excelJersey(p.number), name: p.name, sec: getSecondsFor(p, tab), s, qPts, foulDetail };
+            // 犯規明細標出是哪一節犯的
+            const foulDetail = QUARTER_KEYS
+              .filter(q => p.statsByQuarter?.[q]?.foulsList?.length)
+              .map(q => `${QUARTER_LABELS[q]} ${p.statsByQuarter[q].foulsList.join(",")}`)
+              .join("；");
+            const row = { number: excelJersey(p.number), name: p.name, sec: getSecondsFor(p, 'total'), s: getStatsFor(p, 'total'), qPts, foulDetail };
+            // 沒上場的球員只留背號與姓名，以灰字顯示，不列出一整排 0
+            if (!playerAppeared(p)) {
+              row.muted = true;
+              row.only = { number: row.number, name: row.name, time: "未上場" };
+            }
+            return row;
           });
+          // 有上場的維持名單順序，沒上場的排到最後
+          rows.sort((a, b) => Number(!!a.muted) - Number(!!b.muted));
 
           const total = {
             number: "", name: "全隊合計", foulDetail: "",
@@ -3322,12 +3335,19 @@
         const EXCEL_BORDER = { style: "thin", color: { argb: "FFCBD5E1" } };
         const EXCEL_ALL_BORDERS = { top: EXCEL_BORDER, left: EXCEL_BORDER, bottom: EXCEL_BORDER, right: EXCEL_BORDER };
         const excelFill = (argb) => ({ type: "pattern", pattern: "solid", fgColor: { argb } });
+        // 組與組之間的粗分隔線 (例如 2分球 | 3分球 | 罰球)
+        const EXCEL_GROUP_BORDER = { style: "medium", color: { argb: "FF64748B" } };
 
-        function styleExcelHeaderCell(cell, argb) {
+        function styleExcelHeaderCell(cell, argb, border = EXCEL_ALL_BORDERS) {
           cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
           cell.fill = excelFill(argb);
           cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
-          cell.border = EXCEL_ALL_BORDERS;
+          cell.border = border;
+        }
+
+        // 這一欄是不是新一組的開頭：進入或離開大表頭群組時，或欄位自己標了 sep
+        function startsExcelGroup(columns, i) {
+          return i > 0 && i < columns.length && (!!columns[i].sep || columns[i].group !== columns[i - 1].group);
         }
 
         // 工作表最上方的標題與說明文字 (不合併儲存格，避免跨過凍結欄位時被切斷)
@@ -3336,14 +3356,53 @@
           titleCell.value = title;
           titleCell.font = { bold: true, size: 16 };
           ws.getRow(1).height = 26;
+          if (!info) return;
           const infoCell = ws.getCell(2, 1);
           infoCell.value = info;
           infoCell.font = { color: { argb: "FF475569" } };
         }
 
+        // 標題下方的比分摘要：我方與對手各一列，列出各節得分與總分 (佔 3 列)
+        function writeExcelScoreSummary(ws, startRow, g, quarters, total) {
+          const hasOpponent = g.opponentScore > 0;
+          const lines = [
+            ["隊伍", ...quarters.map(q => QUARTER_LABELS[q]), "總分"],
+            [g.teamName, ...quarters.map(q => total.qPts[q]), total.s.pts],
+            [
+              g.opponentName || "對手",
+              ...quarters.map(q => hasOpponent ? (g.opponentPointsByQuarter?.[q] || 0) : "-"),
+              hasOpponent ? g.opponentScore : "-"
+            ]
+          ];
+          lines.forEach((values, i) => {
+            const r = startRow + i;
+            // 隊名橫跨背號、姓名兩欄
+            ws.mergeCells(r, 1, r, 2);
+            values.forEach((value, vi) => {
+              const cell = ws.getCell(r, vi === 0 ? 1 : vi + 2);
+              cell.value = value;
+              if (i === 0) {
+                styleExcelHeaderCell(cell, "FF312E81");
+                return;
+              }
+              const isTotal = vi === values.length - 1;
+              cell.alignment = { horizontal: vi === 0 ? "left" : "center", vertical: "middle" };
+              cell.border = EXCEL_ALL_BORDERS;
+              cell.font = { bold: vi === 0 || isTotal };
+              if (isTotal) cell.fill = excelFill("FFFEF3C7");
+            });
+          });
+        }
+
         // 依欄位定義寫出一張有兩層表頭的表格。footers 是放在最後、以粗體底色標示的合計列
         function writeExcelTable(ws, headerRow, columns, rows, footers = []) {
           ws.columns = columns.map(c => ({ width: c.width || 7 }));
+          // 每一欄的框線：新一組開頭的左邊、以及它前一欄的右邊畫粗線
+          const borders = columns.map((_, i) => ({
+            ...EXCEL_ALL_BORDERS,
+            ...(startsExcelGroup(columns, i) ? { left: EXCEL_GROUP_BORDER } : {}),
+            ...(startsExcelGroup(columns, i + 1) ? { right: EXCEL_GROUP_BORDER } : {})
+          }));
 
           // 兩層表頭：有 group 的相鄰欄位橫向合併成大表頭，沒有 group 的欄位直向合併兩列
           let col = 0;
@@ -3359,11 +3418,13 @@
               ws.mergeCells(headerRow, col + 1, headerRow + 1, col + 1);
               ws.getCell(headerRow, col + 1).value = columns[col].title;
             }
+            // 合併後的大表頭：左右框線取整組最外側兩欄的
+            const groupBorder = { ...EXCEL_ALL_BORDERS, left: borders[col].left, right: borders[end].right };
+            for (let c = col; c <= end; c++) {
+              styleExcelHeaderCell(ws.getCell(headerRow, c + 1), "FF312E81", groupBorder);
+              styleExcelHeaderCell(ws.getCell(headerRow + 1, c + 1), "FF4338CA", borders[c]);
+            }
             col = end + 1;
-          }
-          for (let c = 1; c <= columns.length; c++) {
-            styleExcelHeaderCell(ws.getCell(headerRow, c), "FF312E81");
-            styleExcelHeaderCell(ws.getCell(headerRow + 1, c), "FF4338CA");
           }
           ws.getRow(headerRow).height = 20;
           ws.getRow(headerRow + 1).height = 20;
@@ -3380,42 +3441,28 @@
                 const numFmt = c.pct ? "0.0%" : (row.numFmt || c.numFmt);
                 if (numFmt) cell.numFmt = numFmt;
               }
-              cell.alignment = { horizontal: c.align || "center", vertical: "middle" };
-              cell.border = EXCEL_ALL_BORDERS;
-              cell.font = { bold: isFooter || !!c.bold };
+              cell.alignment = { horizontal: c.align || "center", vertical: "middle", wrapText: !!c.wrap };
+              cell.border = borders[ci];
+              // row.muted：沒上場的球員以灰字顯示
+              cell.font = row.muted ? { color: { argb: "FF94A3B8" } } : { bold: isFooter || !!c.bold };
               if (isFooter) cell.fill = excelFill(row.fill || "FFFEF3C7");
               else if (i % 2 === 1) cell.fill = excelFill("FFF1F5F9");
             });
           });
         }
 
-        // 單層表頭、從第 1 列開始的簡單表格 (事件紀錄)
-        function writeExcelFlatTable(ws, headers, rows, leftAlignFrom = Infinity) {
-          ws.columns = headers.map(([, width]) => ({ width }));
-          headers.forEach(([title], i) => {
-            const cell = ws.getCell(1, i + 1);
-            cell.value = title;
-            styleExcelHeaderCell(cell, "FF312E81");
-          });
-          rows.forEach(values => {
-            const excelRow = ws.addRow(values);
-            excelRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-              cell.alignment = { horizontal: colNumber >= leftAlignFrom ? "left" : "center", vertical: "middle" };
-              cell.border = EXCEL_ALL_BORDERS;
-            });
-          });
-          if (rows.length > 0) {
-            // 加上篩選按鈕，方便在 Excel 裡只看某一節或某位球員
-            ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: headers.length } };
-          }
-        }
-
-        // 新增一張單場數據工作表 (全場總表或某一節)
-        function addExcelStatsSheet(workbook, g, sheetName, tab) {
-          const isTotal = tab === 'total';
-          const columns = [...EXCEL_STAT_COLUMNS, ...EXCEL_FOUL_COLUMNS, ...(isTotal ? EXCEL_QUARTER_POINT_COLUMNS : [])];
-          const { rows, total } = buildExcelRows(g, tab);
-          const HEADER_ROW = 4; // 第 4、5 列是兩層表頭，第 6 列起是球員資料
+        // 新增一張單場的全場數據工作表
+        function addExcelStatsSheet(workbook, g, sheetName) {
+          const quarters = excelQuartersOf(g);
+          const columns = [
+            ...EXCEL_STAT_COLUMNS.slice(0, 4),
+            ...excelQuarterPointColumns(quarters),
+            ...EXCEL_SHOOTING_TO_TURNOVER_COLUMNS,
+            ...EXCEL_FOUL_COLUMNS
+          ];
+          const { rows, total } = buildExcelRows(g);
+          const SUMMARY_ROW = 2; // 第 2~4 列是比分摘要，第 5 列留白
+          const HEADER_ROW = 6;  // 第 6、7 列是兩層表頭，第 8 列起是球員資料
 
           const ws = workbook.addWorksheet(sheetName, {
             // 凍結前 2 欄 (背號、姓名) 與表頭，往右或往下捲動時仍看得到是誰、是哪一欄
@@ -3423,53 +3470,26 @@
             pageSetup: { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
           });
 
-          const opponentPoints = isTotal ? (g.opponentScore || 0) : (g.opponentPointsByQuarter?.[tab] || 0);
+          const hasOpponent = g.opponentScore > 0;
           const opponentLabel = g.opponentName || "對手";
-          writeExcelTitle(
-            ws,
-            `${g.teamName}　vs　${g.opponentName || '（未填對手）'}　${isTotal ? '全場總表' : QUARTER_LABELS[tab]}`,
-            `比賽日期：${g.date || '-'}　｜　${isTotal ? '全場' : '本節'}比分：${g.teamName} ${total.s.pts} : ${g.opponentScore > 0 ? opponentPoints : '-'} ${opponentLabel}`
-          );
+          writeExcelTitle(ws, `${g.teamName}　vs　${g.opponentName || '（未填對手）'}　｜　${g.date || '-'}`);
+          writeExcelScoreSummary(ws, SUMMARY_ROW, g, quarters, total);
+          ws.getRow(HEADER_ROW - 1).height = 8;
 
           // 合計列下面再放一列對手得分，方便對照
-          const opponentRow = { fill: "FFE2E8F0", only: { name: `對手：${opponentLabel}`, pts: g.opponentScore > 0 ? opponentPoints : "-" } };
-          QUARTER_KEYS.forEach(q => { opponentRow.only[`q${q}`] = g.opponentScore > 0 ? (g.opponentPointsByQuarter?.[q] || 0) : "-"; });
+          const opponentRow = { fill: "FFE2E8F0", only: { name: `對手：${opponentLabel}`, pts: hasOpponent ? g.opponentScore : "-" } };
+          quarters.forEach(q => { opponentRow.only[`q${q}`] = hasOpponent ? (g.opponentPointsByQuarter?.[q] || 0) : "-"; });
 
           writeExcelTable(ws, HEADER_ROW, columns, rows, [total, opponentRow]);
         }
 
-        // 事件紀錄工作表：依發生順序由先到後
-        function addExcelLogSheet(workbook, g) {
-          const ws = workbook.addWorksheet("事件紀錄", { views: [{ state: "frozen", ySplit: 1 }] });
-          const headers = [["序號", 7], ["節次", 9], ["該節剩餘時間", 14], ["背號", 7], ["姓名", 14], ["事件", 50]];
-          const rows = [...g.logs].reverse().map((l, i) => [
-            i + 1,
-            QUARTER_LABELS[l.quarter] || String(l.quarter),
-            l.timeStr,
-            l.playerNumber ?? "",
-            l.playerName ?? "",
-            l.actionText
-          ]);
-          writeExcelFlatTable(ws, headers, rows, 5);
-          if (rows.length === 0) ws.addRow(["", "", "", "", "", "（本場尚無事件紀錄）"]);
-        }
-
-        // 單場比賽的活頁簿：全場總表 + 有打到的各節 + 事件紀錄
+        // 單場比賽的活頁簿：只有一張全場總表
         function buildExcelWorkbook(ExcelJS, g) {
           const workbook = new ExcelJS.Workbook();
           workbook.creator = "單隊籃球攻守紀錄系統";
           workbook.created = new Date();
 
-          addExcelStatsSheet(workbook, g, "全場總表", "total");
-          QUARTER_KEYS.forEach(q => {
-            // 還沒打到的節次不產生工作表，避免多出全是 0 的表
-            const hasData = g.players.some(p => (p.playedSecondsByQuarter?.[q] || 0) > 0)
-              || g.logs.some(l => String(l.quarter) === String(q));
-            if (hasData || String(q) === String(g.currentQuarter)) {
-              addExcelStatsSheet(workbook, g, QUARTER_LABELS[q], q);
-            }
-          });
-          addExcelLogSheet(workbook, g);
+          addExcelStatsSheet(workbook, g, "全場總表");
           return workbook;
         }
 
@@ -3586,7 +3606,7 @@
           // --- 3. 每場比賽各一張全場數據表 ---
           ordered.forEach(g => {
             const name = uniqueSheetName(`${(g.date || "").slice(5)} vs ${g.opponentName || "未填對手"}`, usedNames);
-            addExcelStatsSheet(workbook, g, name, "total");
+            addExcelStatsSheet(workbook, g, name);
           });
 
           return workbook;
