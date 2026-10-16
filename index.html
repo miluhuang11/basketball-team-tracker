@@ -26,6 +26,23 @@
             sans: ['Outfit', 'sans-serif'],
             mono: ['JetBrains Mono', 'monospace'],
           },
+          // 亮色主題：把 slate 色階反轉 (950 變白、100 變深)，原本深色介面的 class 不用逐一修改就會變成白底深字。
+          // 彩色的 300/400 是給深底用的淺色字，在白底上太淡，改用 700/600 的色值；950 只拿來當淡色底，改成 50
+          colors: {
+            slate: {
+              50: '#020617', 100: '#0f172a', 200: '#1e293b', 300: '#334155', 400: '#475569',
+              500: '#64748b', 600: '#94a3b8', 700: '#dfe5ee', 800: '#eef2f7', 900: '#f8fafc', 950: '#ffffff'
+            },
+            indigo: { 300: '#4338ca', 400: '#4f46e5', 950: '#eef2ff' },
+            rose: { 300: '#be123c', 400: '#e11d48', 950: '#fff1f2' },
+            emerald: { 300: '#047857', 400: '#059669', 950: '#ecfdf5' },
+            amber: { 300: '#b45309', 400: '#d97706' },
+            sky: { 400: '#0284c7' },
+            teal: { 400: '#0d9488' },
+            violet: { 400: '#7c3aed' },
+            blue: { 400: '#2563eb' },
+            orange: { 400: '#ea580c' }
+          },
           boxShadow: {
             'glow-amber': '0 0 15px rgba(245, 158, 11, 0.45)',
             'glow-indigo': '0 0 15px rgba(99, 102, 241, 0.45)',
@@ -36,13 +53,13 @@
     }
   </script>
   <style>
-    /* Custom Scrollbar for better dark UI */
+    /* Custom Scrollbar */
     ::-webkit-scrollbar {
       width: 6px;
       height: 6px;
     }
     ::-webkit-scrollbar-track {
-      background: rgba(15, 23, 42, 0.3);
+      background: rgba(226, 232, 240, 0.6);
     }
     ::-webkit-scrollbar-thumb {
       background: rgba(148, 163, 184, 0.3);
@@ -59,6 +76,10 @@
     }
     input[type=number] {
       -moz-appearance: textfield;
+    }
+    /* Log 動作顏色存在紀錄裡、是給深底設計的淺色，白底上壓暗才看得清楚 */
+    .log-action-text {
+      filter: brightness(0.7) saturate(1.3);
     }
     /* Toast 進場動畫 */
     @keyframes slide-in {
@@ -78,7 +99,7 @@
     }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 font-sans min-h-screen select-none overflow-x-hidden">
+<body class="bg-white text-slate-100 font-sans min-h-screen select-none overflow-x-hidden">
 
   <div id="app" class="flex flex-col min-h-screen lg:max-h-screen lg:max-h-dvh">
     
@@ -103,7 +124,7 @@
             @click="changeQuarter(q)" 
             v-for="q in quarters" 
             :key="q"
-            :class="currentQuarter === q ? 'bg-indigo-600 text-white font-bold' : 'text-slate-400 hover:text-white'"
+            :class="currentQuarter === q ? 'bg-indigo-600 text-white font-bold' : 'text-slate-400 hover:text-slate-100'"
             class="min-w-[36px] sm:min-w-[40px] px-2 sm:px-3 py-2 rounded-md text-sm transition"
           >
             {{ q }}
@@ -118,7 +139,7 @@
           <!-- 倒數計時大表 -->
           <div 
             @click="isEditingTime = true"
-            class="cursor-pointer text-2xl sm:text-3xl font-mono font-black tracking-widest text-amber-400 bg-black/75 px-3 sm:px-4 py-1 rounded-xl border border-slate-700/80 hover:border-amber-500/50 shadow-glow-amber transition"
+            class="cursor-pointer text-2xl sm:text-3xl font-mono font-black tracking-widest text-[#fbbf24] bg-slate-100 px-3 sm:px-4 py-1 rounded-xl border border-slate-700/80 hover:border-amber-500/50 shadow-glow-amber transition"
           >
             <span v-if="!isEditingTime">{{ formattedTime }}</span>
             <input 
@@ -175,12 +196,12 @@
           <button 
             v-else
             @click="togglePossession" 
-            class="hover:text-white font-bold transition flex items-center gap-1.5 py-2 px-1 text-sm"
+            class="hover:text-slate-100 font-bold transition flex items-center gap-1.5 py-2 px-1 text-sm"
             title="點擊進行轉邊"
           >
             <span 
               :class="{
-                'text-white font-black': possessionArrow === 'W',
+                'text-slate-100 font-black': possessionArrow === 'W',
                 'text-indigo-400 font-black': possessionArrow === 'B'
               }"
             >
@@ -226,7 +247,7 @@
         <span class="text-sm font-bold text-amber-300"><i class="fa-solid fa-bell mr-1"></i>{{ quarterLabels[currentQuarter] }}時間到</span>
         <button 
           @click="changeQuarter(nextQuarter)" 
-          class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-sm px-4 h-10 rounded-lg transition flex items-center gap-1.5"
+          class="bg-amber-500 hover:bg-amber-400 text-slate-50 font-black text-sm px-4 h-10 rounded-lg transition flex items-center gap-1.5"
         >
           進入{{ quarterLabels[nextQuarter] }} <i class="fa-solid fa-arrow-right"></i>
         </button>
@@ -538,35 +559,35 @@
           <div class="flex border-b border-slate-800/60 bg-slate-950/40 shrink-0">
             <button 
               @click="activeTab = 'bench'" 
-              :class="activeTab === 'bench' ? 'border-b-2 border-indigo-500 text-white font-bold bg-slate-900/30' : 'text-slate-400 hover:text-slate-200'"
+              :class="activeTab === 'bench' ? 'border-b-2 border-indigo-500 text-slate-100 font-bold bg-slate-900/30' : 'text-slate-400 hover:text-slate-200'"
               class="flex-1 py-3 text-xs sm:text-sm text-center transition whitespace-nowrap"
             >
               <i class="fa-solid fa-couch mr-1"></i>板凳<span class="hidden sm:inline"> ({{ benchPlayers.length }})</span>
             </button>
             <button 
               @click="activeTab = 'boxscore'" 
-              :class="activeTab === 'boxscore' ? 'border-b-2 border-indigo-500 text-white font-bold bg-slate-900/30' : 'text-slate-400 hover:text-slate-200'"
+              :class="activeTab === 'boxscore' ? 'border-b-2 border-indigo-500 text-slate-100 font-bold bg-slate-900/30' : 'text-slate-400 hover:text-slate-200'"
               class="flex-1 py-3 text-xs sm:text-sm text-center transition whitespace-nowrap"
             >
               <i class="fa-solid fa-table-list mr-1"></i>數據
             </button>
             <button 
               @click="activeTab = 'roster'" 
-              :class="activeTab === 'roster' ? 'border-b-2 border-indigo-500 text-white font-bold bg-slate-900/30' : 'text-slate-400 hover:text-slate-200'"
+              :class="activeTab === 'roster' ? 'border-b-2 border-indigo-500 text-slate-100 font-bold bg-slate-900/30' : 'text-slate-400 hover:text-slate-200'"
               class="flex-1 py-3 text-xs sm:text-sm text-center transition whitespace-nowrap"
             >
               <i class="fa-solid fa-users-gear mr-1"></i>名單
             </button>
             <button 
               @click="activeTab = 'history'" 
-              :class="activeTab === 'history' ? 'border-b-2 border-indigo-500 text-white font-bold bg-slate-900/30' : 'text-slate-400 hover:text-slate-200'"
+              :class="activeTab === 'history' ? 'border-b-2 border-indigo-500 text-slate-100 font-bold bg-slate-900/30' : 'text-slate-400 hover:text-slate-200'"
               class="flex-1 py-3 text-xs sm:text-sm text-center transition whitespace-nowrap"
             >
               <i class="fa-solid fa-clock-rotate-left mr-1"></i>歷史
             </button>
             <button 
               @click="activeTab = 'cloud'" 
-              :class="activeTab === 'cloud' ? 'border-b-2 border-indigo-500 text-white font-bold bg-slate-900/30' : 'text-slate-400 hover:text-slate-200'"
+              :class="activeTab === 'cloud' ? 'border-b-2 border-indigo-500 text-slate-100 font-bold bg-slate-900/30' : 'text-slate-400 hover:text-slate-200'"
               class="flex-1 py-3 text-xs sm:text-sm text-center transition whitespace-nowrap"
             >
               <i :class="syncError ? 'fa-solid fa-triangle-exclamation text-rose-400' : 'fa-solid fa-cloud'" class="mr-1"></i>雲端
@@ -590,7 +611,7 @@
                 >
                   <div class="flex items-center space-x-2">
                     <span class="font-mono font-bold text-base text-slate-400 group-hover:text-slate-200">#{{ player.number }}</span>
-                    <span class="text-sm font-bold text-slate-300 group-hover:text-white truncate max-w-[90px]">{{ player.name }}</span>
+                    <span class="text-sm font-bold text-slate-300 group-hover:text-slate-100 truncate max-w-[90px]">{{ player.name }}</span>
                   </div>
                   <!-- 當場上有選取球員時，顯示替換提示 -->
                   <div class="text-xs px-1.5 py-0.5 rounded transition"
@@ -615,7 +636,7 @@
                     :class="[
                       boxscoreQuarterTab === tab.value 
                         ? tab.activeClass 
-                        : 'text-slate-400 border-transparent hover:text-white'
+                        : 'text-slate-400 border-transparent hover:text-slate-100'
                     ]"
                     class="flex-1 py-2 rounded-lg text-xs transition text-center border font-semibold whitespace-nowrap"
                     :title="tab.label"
@@ -626,7 +647,7 @@
                 <!-- 放大/縮小按鈕 (桌機版專用，可展開寬度) -->
                 <button 
                   @click="isBoxscoreMaximized = !isBoxscoreMaximized"
-                  class="hidden lg:flex bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white w-10 h-10 rounded-lg items-center justify-center transition shrink-0"
+                  class="hidden lg:flex bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-100 w-10 h-10 rounded-lg items-center justify-center transition shrink-0"
                   :title="isBoxscoreMaximized ? '還原視窗' : '放大表格'"
                 >
                   <i :class="isBoxscoreMaximized ? 'fa-solid fa-compress' : 'fa-solid fa-expand'"></i>
@@ -773,7 +794,7 @@
                     type="text" 
                     v-model="newPlayerNumber" 
                     placeholder="背號" 
-                    class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-center text-sm text-white focus:border-indigo-500 focus:outline-none"
+                    class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-center text-sm text-slate-100 focus:border-indigo-500 focus:outline-none"
                     required
                   >
                 </div>
@@ -783,7 +804,7 @@
                     type="text" 
                     v-model="newPlayerName" 
                     placeholder="球員姓名" 
-                    class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                    class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none"
                     required
                   >
                 </div>
@@ -812,7 +833,7 @@
                   v-model="rosterPasteText" 
                   rows="5" 
                   placeholder="4 小明&#10;7 阿華&#10;23 大雄" 
-                  class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none font-mono select-text"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none font-mono select-text"
                 ></textarea>
                 <button 
                   type="button" 
@@ -845,7 +866,7 @@
                       v-model="p.name" 
                       @focus="rememberField(p.name)" 
                       @change="onPlayerNameChange(p)" 
-                      class="bg-transparent border-b border-transparent hover:border-slate-700 focus:border-indigo-500 focus:outline-none text-sm text-white font-semibold w-28 py-1.5"
+                      class="bg-transparent border-b border-transparent hover:border-slate-700 focus:border-indigo-500 focus:outline-none text-sm text-slate-100 font-semibold w-28 py-1.5"
                       title="點擊修改姓名"
                     />
                   </div>
@@ -950,7 +971,7 @@
                       type="text" 
                       v-model="supabaseUrl" 
                       placeholder="https://xxxx.supabase.co" 
-                      class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none font-sans"
+                      class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none font-sans"
                     >
                   </div>
                   <div>
@@ -959,7 +980,7 @@
                       type="password" 
                       v-model="supabaseKey" 
                       placeholder="eyJhbGciOiJIUzI1Ni..." 
-                      class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none font-mono"
+                      class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none font-mono"
                     >
                   </div>
                   
@@ -1091,7 +1112,7 @@
               <div>
                 <span class="text-slate-500 font-mono mr-1">[{{ log.quarter }}節 {{ log.timeStr }}]</span>
                 <span v-if="log.playerNumber" class="font-bold text-slate-200">#{{ log.playerNumber }} {{ log.playerName }}</span>
-                <span class="ml-1.5 font-medium" :style="{ color: log.color || '#a5b4fc' }">{{ log.actionText }}</span>
+                <span class="ml-1.5 font-medium log-action-text" :style="{ color: log.color || '#a5b4fc' }">{{ log.actionText }}</span>
               </div>
               
               <!-- 快速撤銷單筆 Log -->
@@ -1109,7 +1130,7 @@
     </main>
 
     <!-- 結束比賽 Modal -->
-    <div v-if="showFinishModal" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+    <div v-if="showFinishModal" class="fixed inset-0 bg-slate-100/40 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
       <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 max-w-sm w-full shadow-2xl max-h-full overflow-y-auto">
         <div class="flex items-center space-x-3 text-emerald-400 mb-4">
           <i class="fa-solid fa-flag-checkered text-2xl"></i>
@@ -1119,11 +1140,11 @@
         <div class="space-y-3 mb-5">
           <div>
             <label class="text-xs text-slate-400 block mb-1">比賽日期</label>
-            <input type="date" v-model="gameDate" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none">
+            <input type="date" v-model="gameDate" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none">
           </div>
           <div>
             <label class="text-xs text-slate-400 block mb-1">對手隊名</label>
-            <input type="text" v-model="opponentName" placeholder="例如：某某大學" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none">
+            <input type="text" v-model="opponentName" placeholder="例如：某某大學" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none">
           </div>
           <div class="flex gap-3">
             <div class="flex-1 min-w-0">
@@ -1138,7 +1159,7 @@
                 inputmode="numeric" 
                 :value="opponentScore" 
                 @change="setOpponentFinalScore($event.target.value)" 
-                class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-sm font-mono font-bold text-white focus:border-indigo-500 focus:outline-none"
+                class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-sm font-mono font-bold text-slate-100 focus:border-indigo-500 focus:outline-none"
               >
             </div>
           </div>
@@ -1175,14 +1196,14 @@
     </div>
 
     <!-- 隊伍 Modal：切換、新增、改名、刪除。還沒有任何隊伍時不能關閉 -->
-    <div v-if="showTeamModal" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+    <div v-if="showTeamModal" class="fixed inset-0 bg-slate-100/40 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
       <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 max-w-md w-full shadow-2xl max-h-full overflow-y-auto">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-black flex items-center gap-2">
             <i class="fa-solid fa-shield-halved text-indigo-400"></i>
             <span>{{ teams.length === 0 ? '歡迎！先建立你的球隊' : (isCreatingTeam ? '新增隊伍' : '隊伍') }}</span>
           </h3>
-          <button v-if="teams.length > 0" @click="showTeamModal = false" class="text-slate-400 hover:text-white hover:bg-slate-800 w-10 h-10 flex items-center justify-center rounded-lg transition" title="關閉">
+          <button v-if="teams.length > 0" @click="showTeamModal = false" class="text-slate-400 hover:text-slate-100 hover:bg-slate-800 w-10 h-10 flex items-center justify-center rounded-lg transition" title="關閉">
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
@@ -1200,7 +1221,7 @@
                 type="text" 
                 v-model="t.name" 
                 @change="renameTeam(t)" 
-                class="w-full min-w-0 bg-transparent border-b border-transparent hover:border-slate-700 focus:border-indigo-500 focus:outline-none text-sm font-bold text-white py-1"
+                class="w-full min-w-0 bg-transparent border-b border-transparent hover:border-slate-700 focus:border-indigo-500 focus:outline-none text-sm font-bold text-slate-100 py-1"
                 title="點擊修改隊名"
               />
               <div class="text-xs text-slate-500">{{ t.roster.length }} 位球員</div>
@@ -1217,10 +1238,10 @@
             </button>
           </div>
           <div class="flex gap-2">
-            <button @click="startCreatingTeam" class="flex-1 border border-dashed border-slate-700 hover:border-indigo-500 text-slate-300 hover:text-white py-3 rounded-xl font-bold transition text-sm flex items-center justify-center gap-2">
+            <button @click="startCreatingTeam" class="flex-1 border border-dashed border-slate-700 hover:border-indigo-500 text-slate-300 hover:text-slate-100 py-3 rounded-xl font-bold transition text-sm flex items-center justify-center gap-2">
               <i class="fa-solid fa-plus"></i> 新增隊伍
             </button>
-            <button @click="backupFileInput.click()" class="flex-1 border border-dashed border-slate-700 hover:border-emerald-500 text-slate-300 hover:text-white py-3 rounded-xl font-bold transition text-sm flex items-center justify-center gap-2">
+            <button @click="backupFileInput.click()" class="flex-1 border border-dashed border-slate-700 hover:border-emerald-500 text-slate-300 hover:text-slate-100 py-3 rounded-xl font-bold transition text-sm flex items-center justify-center gap-2">
               <i class="fa-solid fa-upload"></i> 匯入備份檔
             </button>
           </div>
@@ -1234,7 +1255,7 @@
         <form v-else @submit.prevent="createTeam" class="space-y-3">
           <div>
             <label class="text-xs text-slate-400 block mb-1">隊名</label>
-            <input type="text" v-model="teamForm.name" required placeholder="例如：某某大學女籃" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none">
+            <input type="text" v-model="teamForm.name" required placeholder="例如：某某大學女籃" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none">
           </div>
           <div>
             <label class="text-xs text-slate-400 block mb-1">球員名單（一行一位，格式為「背號 姓名」）</label>
@@ -1242,7 +1263,7 @@
               v-model="teamForm.rosterText" 
               rows="8" 
               placeholder="4 小明&#10;7 阿華&#10;23 大雄" 
-              class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none font-mono select-text"
+              class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none font-mono select-text"
             ></textarea>
             <p class="text-[11px] text-slate-500 leading-normal mt-1">
               * 前 5 位會先排為場上球員。名單之後隨時可以在「名單」分頁增減或修改，現在留空也可以。
@@ -1269,7 +1290,7 @@
     <!-- 提示 Toast（錯誤為紅色，一般通知為深灰） -->
     <div
       v-if="toastMessage"
-      :class="toastType === 'error' ? 'bg-rose-600' : 'bg-slate-700 border border-slate-600'"
+      :class="toastType === 'error' ? 'bg-rose-600' : 'bg-slate-200 border border-slate-300'"
       class="fixed bottom-4 left-4 right-4 sm:left-auto sm:bottom-6 sm:right-6 text-white font-bold px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 z-50 animate-slide-in"
     >
       <i :class="toastType === 'error' ? 'fa-solid fa-circle-xmark' : 'fa-solid fa-circle-check text-emerald-400'"></i>
@@ -1353,6 +1374,9 @@
         const timeInputRef = ref(null);
         let gameTimerInterval = null;
         let lastTickAt = 0; // 上一次計時刻度的時間戳 (ms)
+        let tickCarryMs = 0; // 暫停時還沒滿 1 秒的零頭 (ms)，下次啟動接著算
+        // 這一節時鐘是否啟動過。還沒啟動前改時間 (例如設成 8:00) 是在設定單節長度，不能算成上場時間
+        const clockStartedThisQuarter = ref(false);
 
         // 音效相關
         const isSoundEnabled = ref(true);
@@ -1384,7 +1408,7 @@
           { value: 2, label: "第二節 (Q2)", short: "Q2", activeClass: "bg-rose-500 text-white font-bold" },
           { value: 3, label: "第三節 (Q3)", short: "Q3", activeClass: "bg-emerald-500 text-white font-bold" },
           { value: 4, label: "第四節 (Q4)", short: "Q4", activeClass: "bg-slate-300 text-slate-950 font-bold" },
-          { value: "OT", label: "延長賽 (OT)", short: "OT", activeClass: "bg-amber-500 text-slate-950 font-bold" },
+          { value: "OT", label: "延長賽 (OT)", short: "OT", activeClass: "bg-amber-500 text-slate-50 font-bold" },
           { value: "total", label: "總表", short: "總表", activeClass: "bg-indigo-600 text-white font-bold" }
         ];
 
@@ -1609,6 +1633,8 @@
               currentQuarter.value = state.currentQuarter || 1;
               possessionArrow.value = state.possessionArrow || "none";
               remainingSeconds.value = state.remainingSeconds !== undefined ? state.remainingSeconds : 600;
+              // 舊版存檔沒有這個欄位：時鐘不在整節開頭就視為已經開打
+              clockStartedThisQuarter.value = state.clockStarted ?? ![600, 300].includes(remainingSeconds.value);
               players.value = state.players || [];
               players.value.forEach(normalizePlayer);
               
@@ -1637,6 +1663,8 @@
           if (!team) return;
 
           stopTimer();
+          tickCarryMs = 0;
+          clockStartedThisQuarter.value = false;
           teamName.value = team.name;
           currentQuarter.value = 1;
           possessionArrow.value = "none";
@@ -1690,6 +1718,7 @@
             currentQuarter: currentQuarter.value,
             possessionArrow: possessionArrow.value,
             remainingSeconds: remainingSeconds.value,
+            clockStarted: clockStartedThisQuarter.value,
             players: players.value,
             teamFouls: teamFouls.value,
             teamTimeouts: teamTimeouts.value,
@@ -2048,6 +2077,8 @@
           if (gameTimerInterval) {
             clearInterval(gameTimerInterval);
             gameTimerInterval = null;
+            // 留住不滿 1 秒的零頭：否則每按一次暫停就少算最多 1 秒，整場暫停幾十次後時鐘與上場時間都會偏少
+            tickCarryMs = Math.max(0, Math.min(999, Date.now() - lastTickAt));
           }
           isTimerRunning.value = false;
         }
@@ -2061,14 +2092,7 @@
           if (step > 0) {
             const before = remainingSeconds.value;
             remainingSeconds.value -= step;
-            // 自動幫場上 5 人增加分節與總上場時間 (秒)
-            const q = currentQuarter.value;
-            players.value.forEach(p => {
-              if (!p.isOnCourt) return;
-              if (!p.playedSecondsByQuarter) p.playedSecondsByQuarter = createQuarterSeconds();
-              p.playedSecondsByQuarter[q] = (p.playedSecondsByQuarter[q] || 0) + step;
-              p.playedSeconds = (p.playedSeconds || 0) + step;
-            });
+            syncCourtTime();
             // 每跨過一個 5 秒刻度存一次 state，不要太頻繁以優化效能
             if (Math.floor(before / 5) !== Math.floor(remainingSeconds.value / 5)) {
               saveState();
@@ -2093,15 +2117,49 @@
             // 以實際經過的時間計算，而不是每次固定扣 1 秒：
             // 分頁切到背景或螢幕鎖定時瀏覽器會延遲 setInterval，固定扣 1 秒會讓時鐘越走越慢
             isTimerRunning.value = true;
-            lastTickAt = Date.now();
+            clockStartedThisQuarter.value = true;
+            lastTickAt = Date.now() - tickCarryMs;
+            tickCarryMs = 0;
             gameTimerInterval = setInterval(tickTimer, 250);
           }
+        }
+
+        // 上場時間的算法：上場時記下當下的比賽時鐘，下場時再看一次時鐘，兩者相減就是這一段的上場時間，多段累加。
+        // 每位場上球員身上有一段 stint = { q: 節數, start: 上場時的剩餘秒數, base: 上場前這一節已累計的秒數 }，
+        // 這一節的上場時間 = base + (start - 目前剩餘秒數)。時鐘怎麼被調整都不另外處理，一律以時鐘讀數為準。
+        function openStint(p) {
+          const q = currentQuarter.value;
+          p.stint = { q, start: remainingSeconds.value, base: p.playedSecondsByQuarter?.[q] || 0 };
+        }
+
+        // 依目前時鐘更新場上球員的上場時間 (存回 playedSecondsByQuarter，數據表與匯出都直接讀這個欄位)
+        function syncCourtTime() {
+          const q = currentQuarter.value;
+          players.value.forEach(p => {
+            if (!p.isOnCourt) {
+              if (p.stint) p.stint = null;
+              return;
+            }
+            // 沒有區間 (舊資料) 或區間是上一節的：從現在的時鐘開始新的一段
+            if (!p.stint || String(p.stint.q) !== String(q)) openStint(p);
+            if (!p.playedSecondsByQuarter) p.playedSecondsByQuarter = createQuarterSeconds();
+            p.playedSecondsByQuarter[q] = p.stint.base + Math.max(0, p.stint.start - remainingSeconds.value);
+            updatePlayerTotals(p);
+          });
+        }
+
+        function setClock(newRemaining) {
+          remainingSeconds.value = newRemaining;
+          tickCarryMs = 0;
+          // 時鐘還沒啟動過：視為設定單節長度，場上球員從新的時間開始算
+          if (!clockStartedThisQuarter.value) players.value.forEach(p => { if (p.isOnCourt) openStint(p); });
+          syncCourtTime();
         }
 
         // 時間微調
         function adjustTime(sec) {
           playClickSound(440, 0.05); // A4
-          remainingSeconds.value = Math.max(0, Math.min(3600, remainingSeconds.value + sec));
+          setClock(Math.max(0, Math.min(3600, remainingSeconds.value + sec)));
           saveState();
         }
 
@@ -2124,7 +2182,7 @@
             const m = parseInt(parts[0], 10);
             const s = parseInt(parts[1], 10);
             if (!isNaN(m) && !isNaN(s) && m >= 0 && s >= 0 && s < 60) {
-              remainingSeconds.value = m * 60 + s;
+              setClock(Math.min(3600, m * 60 + s));
               saveState();
               return;
             }
@@ -2174,9 +2232,13 @@
 
           // 暫停計時器跑動 (避免切換後計時器在無人看管下直接繼續倒數)
           stopTimer();
+          tickCarryMs = 0;
+          syncCourtTime();
           currentQuarter.value = q;
           // 換節自動重設單節剩餘時間 (10:00，延長賽為 5:00)
           remainingSeconds.value = q === 'OT' ? 300 : 600;
+          clockStartedThisQuarter.value = false;
+          players.value.forEach(p => { if (p.isOnCourt) openStint(p); });
 
           // 團犯以該節實際已記的次數為準：新的一節是 0，切回打過的節數則恢復原本的次數
           teamFouls.value = teamFoulsFor(q);
@@ -2474,6 +2536,7 @@
 
               currentQuarter.value = isNaN(Number(data.quarter)) ? data.quarter : Number(data.quarter);
               remainingSeconds.value = data.remaining_seconds ?? 600;
+              clockStartedThisQuarter.value = ![600, 300].includes(remainingSeconds.value);
               // 雲端紀錄可能是舊版程式存的，欄位不一定齊全，載入時一律補齊
               players.value = Array.isArray(data.players) ? data.players : [];
               players.value.forEach(normalizePlayer);
@@ -2578,8 +2641,12 @@
           playClickSound(349.23, 0.12); // F4 - 換人專用聲音
           pushHistoryState();
 
+          // 先用換人當下的時鐘結算換下的人，再從這個時鐘開始算換上的人
+          syncCourtTime();
           outP.isOnCourt = false;
+          outP.stint = null;
           inP.isOnCourt = true;
+          openStint(inP);
 
           addLog({
             playerNumber: inP.number,
@@ -2587,7 +2654,7 @@
             actionText: `替換下場的 #${outP.number} ${outP.name} 上場`,
             color: '#38bdf8', // 天空藍
             actionType: 'SUB',
-            meta: { subOutId: outP.id, subInId: inP.id }
+            meta: { subOutId: outP.id, subInId: inP.id, clock: remainingSeconds.value }
           });
 
           // 自動切換選取為新換上的場上球員，以方便立刻繼續操作數據
@@ -2603,7 +2670,9 @@
 
           if (target.isOnCourt) {
             pushHistoryState();
+            syncCourtTime();
             target.isOnCourt = false;
+            target.stint = null;
             if (selectedCourtPlayer.value?.id === target.id) {
               clearCourtSelection();
             }
@@ -2615,6 +2684,7 @@
             }
             pushHistoryState();
             target.isOnCourt = true;
+            openStint(target);
           }
           saveState();
         }
@@ -2708,6 +2778,7 @@
             currentQuarter: currentQuarter.value,
             possessionArrow: possessionArrow.value,
             remainingSeconds: remainingSeconds.value,
+            clockStarted: clockStartedThisQuarter.value,
             players: JSON.parse(JSON.stringify(players.value)),
             teamFouls: teamFouls.value,
             teamTimeouts: teamTimeouts.value,
@@ -2728,12 +2799,8 @@
           const [prevState, ...rest] = history.value;
           history.value = rest;
 
-          // 比賽時鐘與上場時間是真實流逝的時間，不屬於被撤銷的動作。
-          // 還原快照時保留目前的值，否則 Undo 會把時鐘倒轉回動作發生的當下。
-          const playedNow = {};
-          players.value.forEach(p => {
-            playedNow[p.id] = { total: p.playedSeconds || 0, byQuarter: p.playedSecondsByQuarter };
-          });
+          // 比賽時鐘不屬於被撤銷的動作，Undo 時保留目前的時鐘。
+          // 上場時間由快照裡的上場區間 (stint) 搭配目前時鐘重新推算，撤銷換人時換下的人會從原本上場的時刻接續累計
           const quarterChanged = String(prevState.currentQuarter) !== String(currentQuarter.value);
 
           currentQuarter.value = prevState.currentQuarter;
@@ -2741,13 +2808,8 @@
           // 只有撤銷「換節」時才還原時鐘（換節會把時間重設為 10:00 / 5:00）
           if (quarterChanged) remainingSeconds.value = prevState.remainingSeconds;
           players.value = prevState.players;
-          players.value.forEach(p => {
-            const now = playedNow[p.id];
-            if (now && now.byQuarter && now.total >= (p.playedSeconds || 0)) {
-              p.playedSecondsByQuarter = now.byQuarter;
-              updatePlayerTotals(p);
-            }
-          });
+          if (quarterChanged) clockStartedThisQuarter.value = !!prevState.clockStarted;
+          syncCourtTime();
           teamFouls.value = prevState.teamFouls;
           teamTimeouts.value = prevState.teamTimeouts || 0;
           if (prevState.opponentPointsByQuarter) opponentPointsByQuarter.value = { ...prevState.opponentPointsByQuarter };
@@ -2779,6 +2841,10 @@
               showToast("這次換人之後場上陣容又變動過，無法單獨撤銷。請改用 Undo，或到「名單」分頁調整場上球員", 'error');
               return;
             }
+            if (String(logItem.quarter) !== String(currentQuarter.value)) {
+              showToast("這次換人是在上一節，無法單獨撤銷。請改用 Undo，或到「名單」分頁調整場上球員", 'error');
+              return;
+            }
           }
 
           playClickSound(220, 0.1);
@@ -2791,8 +2857,17 @@
             const subOut = players.value.find(p => p.id === logItem.meta.subOutId);
             const subIn = players.value.find(p => p.id === logItem.meta.subInId);
             if (subOut && subIn) {
-              subOut.isOnCourt = true;
+              const q = currentQuarter.value;
+              // 換上的人這一段當作沒發生，時間退回上場前
+              if (subIn.stint) subIn.playedSecondsByQuarter[q] = subIn.stint.base;
+              subIn.stint = null;
+              updatePlayerTotals(subIn);
               subIn.isOnCourt = false;
+              // 換下的人從換人那一刻的時鐘接著算 (舊版 Log 沒有記時鐘，就從現在開始算)
+              const clock = logItem.meta.clock ?? remainingSeconds.value;
+              subOut.stint = { q, start: clock, base: subOut.playedSecondsByQuarter?.[q] || 0 };
+              subOut.isOnCourt = true;
+              syncCourtTime();
               if (selectedCourtPlayer.value?.id === subIn.id) {
                 selectedCourtPlayer.value = subOut;
               }
@@ -2828,6 +2903,8 @@
                 teamFouls.value = logItem.meta.prevTeamFouls || 0;
                 teamTimeouts.value = logItem.meta.prevTeamTimeouts || 0;
               }
+              clockStartedThisQuarter.value = true;
+              syncCourtTime();
             }
           } else if (logItem.actionType === 'OPP_SCORE') {
             const q = logItem.quarter;
@@ -3013,6 +3090,7 @@
           currentQuarter.value = data.currentQuarter || 1;
           possessionArrow.value = data.possessionArrow || "none";
           remainingSeconds.value = data.remainingSeconds ?? 0;
+          clockStartedThisQuarter.value = true;
           players.value = data.players || [];
           players.value.forEach(normalizePlayer);
           sortPlayers();
